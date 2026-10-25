@@ -1,0 +1,36 @@
+# Gradle
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+.kotlin/
+
+# IDE
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+
+# Local machine
+local.properties
+*.log
+
+# Runtime data (never commit)
+data/
+*.db
+*.db-wal
+*.db-shm
+*.hmod
+captures/
+
+# Secrets / signing (never commit)
+*.jks
+*.keystore
+keystore*
+*.p12
+*.pem
+*.key
+
+# OS
+.DS_Store
+Thumbs.db

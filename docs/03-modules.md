@@ -365,8 +365,9 @@ val module = loader.loadClass(entrypoint).getDeclaredConstructor().newInstance()
 
 **恒星**
 
-```
-upload/verify → resolve deps → load classloader → migrations → install → start
+```mermaid
+flowchart LR
+    A["上传 / 校验"] --> B["解析依赖"] --> C["加载 classloader"] --> D["迁移"] --> E["install"] --> F["start"]
 ```
 
 - 启用/停用：注册/注销 RPC 与事件；停用依赖者时级联停用。
@@ -376,8 +377,9 @@ upload/verify → resolve deps → load classloader → migrations → install �
 
 **原生卫星**
 
-```
-download → verify attestation + hashes → store → load → contribute UI
+```mermaid
+flowchart LR
+    A["下载"] --> B["校验背书 + 哈希"] --> C["存储"] --> D["加载"] --> E["注册 UI"]
 ```
 
 - 启用/停用：即时增删导航/设置/卡片。

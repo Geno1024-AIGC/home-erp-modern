@@ -66,22 +66,29 @@
 
 ## 3. 部署拓扑
 
-```
-                    ┌────────────────────────────────┐
-                    │  Planet A（公网）               │
-                    │  WSS 中继 + HTTPS 网关          │
-                    └──▲────────────▲──────────▲─────┘
-         WSS 拨出      │            │ WSS      │ HTTPS
-        ┌──────────────┘            │          └──── Browser（Web 卫星）
-        │                           │
-┌───────┴─────────┐        ┌────────┴──────────┐
-│ Star（家中）     │◀─LAN───│ Native Satellite  │
-│ SQLite + 模块    │  WSS   │ （家中）           │
-└───────▲─────────┘        └───────────────────┘
-        │ WSS 拨出
-┌───────┴─────────┐
-│  Planet B       │◀── WSS / HTTPS ── Native / Web（外地）
-└─────────────────┘
+```mermaid
+flowchart LR
+    subgraph Home["家庭 LAN"]
+        Star["Star<br/>SQLite + 模块"]
+        Native["Native Satellite<br/>Desktop / Android"]
+        Star <-->|"LAN WSS / 端到端"| Native
+    end
+
+    subgraph PlanetA["Planet A（公网）"]
+        PA["WSS 中继<br/>HTTPS 网关"]
+    end
+
+    subgraph PlanetB["Planet B（公网）"]
+        PB["WSS 中继<br/>HTTPS 网关"]
+    end
+
+    Star <-->|"WSS 主动拨出"| PA
+    Star <-->|"WSS 主动拨出"| PB
+    Native <-->|"WSS 拨出"| PA
+
+    Browser["Browser<br/>Web 卫星"] <-->|"HTTPS"| PA
+    RemoteNative["Native Satellite<br/>外地"] <-->|"WSS"| PB
+    RemoteBrowser["Browser<br/>Web 卫星"] <-->|"HTTPS"| PB
 ```
 
 - 恒星**同时**连接所有已配置行星，任意行星都可用于回退。
@@ -135,8 +142,26 @@ homerp://pair
 
 ### 4.4 Web 卫星接入
 
-```
-Browser ──HTTPS──▶ Planet ──隧道 WEB_HTTP 流──▶ Star Web 适配器
+```mermaid
+sequenceDiagram
+    autonumber
+    participant B as Browser
+    participant P as Planet
+    participant S as Star Web 适配器
+
+    B->>P: HTTPS 请求
+    alt home 离线
+        P-->>B: 503
+    else home 在线
+        P->>S: OPEN target=web
+        P->>S: DATA（请求体）
+        P->>S: END
+        S-->>P: WEB_RESPONSE（状态 + 头）
+        S-->>P: DATA（响应体）
+        S-->>P: END
+        P-->>B: HTTPS 响应
+    end
+    Note over P: TLS 终端；可见 Web 明文，不记录正文
 ```
 
 1. 浏览器访问 `https://<planet>/<homeId>/`（或 `<homeId>.<planet-domain>`）。

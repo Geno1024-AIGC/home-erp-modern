@@ -9,14 +9,13 @@
 
 原生路径分三层：
 
-```
-┌──────────────────────────────────────────────┐
-│ 应用层：RPC / 上传 / 下载 / 事件              │  模块可见
-├──────────────────────────────────────────────┤
-│ 内层会话：Tink 端到端加密 + 内层多路复用      │  仅恒星/原生卫星可见
-├──────────────────────────────────────────────┤
-│ 外层传输：WSS + 连接认证 + 外层多路复用       │  行星可见
-└──────────────────────────────────────────────┘
+```mermaid
+flowchart TB
+    App["应用层<br/>RPC / 上传 / 下载 / 事件<br/>模块可见"]
+    Inner["内层会话<br/>Tink 端到端加密 + 内层多路复用<br/>仅恒星 / 原生卫星可见"]
+    Outer["外层传输<br/>WSS + 连接认证 + 外层多路复用<br/>行星可见"]
+
+    App --> Inner --> Outer
 ```
 
 - **外层**用于恒星↔行星、原生卫星↔行星、原生卫星↔恒星（LAN）。
@@ -177,33 +176,34 @@ recordType 4  PAIR_OK
 
 ### 2.3 会话握手
 
-每次连接生成新的临时混合加密密钥对（Tink `HybridEncrypt`，X25519 + HKDF + AES-GCM）。三条消息：
+每次连接生成新的临时混合加密密钥对（Tink `HybridEncrypt`，X25519 + HKDF + AES-GCM）。三条握手消息 + 首个加密帧：
 
+```mermaid
+sequenceDiagram
+    autonumber
+    participant C as 原生卫星
+    participant P as Planet（转发）
+    participant S as 恒星
+
+    C->>P: C_HELLO（protoMin/Max, homeId, deviceId, nc, ephC, capabilities）
+    P->>S: 转发 C_HELLO
+    S-->>P: S_HELLO（proto, ns, ephS, enc(ephC, k_s), capabilities, sigStar(TH0)）
+    P-->>C: 转发 S_HELLO
+    C->>P: C_AUTH（enc(ephS, k_c), sigDevice(TH1)）
+    P->>S: 转发 C_AUTH
+    S-->>P: SESSION_READY（首个加密帧）
+    P-->>C: 转发 SESSION_READY
+    Note over C,S: 派生 TH0 / TH1、K_c2s / K_s2c、sessionId
+    Note over P: 只见公钥、随机数、密文、签名；无会话密钥
 ```
-C -> S  C_HELLO {
-          protoMin, protoMax,
-          homeId, deviceId,
-          nc,                    // 32 字节随机
-          ephC,                  // 客户端临时 Hybrid 公钥 keyset
-          capabilities
-        }
 
-S -> C  S_HELLO {
-          proto,
-          ns,                    // 32 字节随机
-          ephS,                  // 恒星临时 Hybrid 公钥 keyset
-          enc(ephC, k_s),        // 用 ephC 加密 32 字节随机 k_s
-          capabilities,
-          sigStar(TH0)           // 恒星长期 Ed25519 签名
-        }
+字段说明：
 
-C -> S  C_AUTH {
-          enc(ephS, k_c),        // 用 ephS 加密 32 字节随机 k_c
-          sigDevice(TH1)         // 原生卫星长期 Ed25519 签名
-        }
-
-S -> C  SESSION_READY         // 首个加密帧；解密成功即确认
-```
+- `nc` / `ns`：32 字节随机数。
+- `ephC` / `ephS`：客户端 / 恒星的临时 Hybrid 公钥 keyset。
+- `enc(ephX, k)`：用对端临时公钥加密 32 字节随机密钥。
+- `sigStar(TH0)` / `sigDevice(TH1)`：恒星 / 原生卫星的长期 Ed25519 签名。
+- `capabilities`：能力集合；transcript 中使用其规范 CBOR 字节。
 
 transcript 使用**长度前缀的字段字节**，不依赖 CBOR 重新序列化：
 
@@ -308,14 +308,18 @@ sessionId = TH1 的前 16 字节
 
 每条流是「请求半边 + 响应半边」：
 
-```
-客户端                         恒星
-  OPEN ───────────────────────▶
-  DATA* ──────────────────────▶
-  END ────────────────────────▶
-                                RESPONSE（状态 + 元数据）
-             ◀─────────────────  DATA*
-             ◀─────────────────  END
+```mermaid
+sequenceDiagram
+    autonumber
+    participant C as 客户端
+    participant S as 恒星
+
+    C->>S: OPEN
+    C->>S: DATA*
+    C->>S: END
+    S-->>C: RESPONSE（状态 + 元数据）
+    S-->>C: DATA*
+    S-->>C: END
 ```
 
 - `RESPONSE` 的 CBOR：
@@ -393,6 +397,24 @@ END
 WEB_RESPONSE { status: 200, headers: [[name, value], ...] }
 DATA (响应体)*
 END
+```
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant B as Browser
+    participant P as Planet
+    participant S as Star
+
+    B->>P: HTTPS 请求
+    P->>S: OPEN target=web
+    P->>S: DATA（请求体）
+    P->>S: END
+    S-->>P: WEB_RESPONSE（status + headers）
+    S-->>P: DATA（响应体）
+    S-->>P: END
+    P-->>B: HTTPS 响应
+    Note over P: TLS 终端；可见明文，不记录正文
 ```
 
 - 对 `target=web`，`WEB_RESPONSE` 同时充当 `OPEN_OK`：收到即表示流已接受并携带响应头；拒绝用 `OPEN_REJECT`。

@@ -2,21 +2,27 @@
 
 本文件定义恒星、行星、卫星之间的传输协议。目标：多路复用、背压、端到端加密、可演进。
 
-分三层：
+有两条数据面：
+
+1. **原生路径**（Desktop / Android）：WSS 外层 + Tink 内层端到端会话。
+2. **Web 路径**（浏览器）：行星 HTTPS 网关 + 恒星 `WEB_HTTP` 适配器；不做内层 E2E。
+
+原生路径分三层：
 
 ```
 ┌──────────────────────────────────────────────┐
 │ 应用层：RPC / 上传 / 下载 / 事件              │  模块可见
 ├──────────────────────────────────────────────┤
-│ 内层会话：Tink 端到端加密 + 内层多路复用      │  仅恒星/卫星可见
+│ 内层会话：Tink 端到端加密 + 内层多路复用      │  仅恒星/原生卫星可见
 ├──────────────────────────────────────────────┤
 │ 外层传输：WSS + 连接认证 + 外层多路复用       │  行星可见
 └──────────────────────────────────────────────┘
 ```
 
-- **外层**用于恒星↔行星、卫星↔行星、卫星↔恒星（LAN）。
-- **内层**永远运行在一个外层逻辑流之上，恒星与卫星端到端。
-- 行星只解析外层帧，转发 `DATA` 字节，不接触内层明文。
+- **外层**用于恒星↔行星、原生卫星↔行星、原生卫星↔恒星（LAN）。
+- **内层**永远运行在一个外层逻辑流之上，恒星与原生卫星端到端。
+- 行星只解析外层帧，转发 `DATA` 字节；原生流量不接触内层明文。
+- Web 路径的行星是 TLS 终端，**会看到 HTTP 明文**（见 §3.6）。
 
 ---
 
@@ -49,7 +55,7 @@ offset  size  field
 | 0x02 | `HELLO_ACK` | 双向 | 选定版本、服务端 nonce |
 | 0x03 | `REGISTER` | 恒星→行星 | `homeId` + 公钥 + 对 nonce 的签名 |
 | 0x04 | `REGISTER_OK` | 行星→恒星 | 注册结果 |
-| 0x05 | `OPEN` | 卫星→行星/恒星 | 打开逻辑流 |
+| 0x05 | `OPEN` | 原生卫星→行星/恒星；行星→恒星（Web） | 打开逻辑流 |
 | 0x06 | `OPEN_OK` | 对端 | 流已建立 |
 | 0x07 | `OPEN_REJECT` | 对端 | 拒绝及原因 |
 | 0x08 | `DATA` | 双向 | 流字节 |
@@ -60,6 +66,7 @@ offset  size  field
 | 0x0D | `PONG` | 双向 | 保活应答 |
 | 0x0E | `GOAWAY` | 双向 | 优雅关闭连接 |
 | 0x0F | `ERROR` | 双向 | 连接级错误 |
+| 0x10 | `WEB_RESPONSE` | 恒星→行星 | Web 网关响应头（状态 + headers） |
 
 ### 1.4 连接建立
 
@@ -76,25 +83,27 @@ offset  size  field
 
 行星侧注册表来源：行星配置文件（`homes.toml`）或管理员 RPC。行星是用户自己的服务器，不做开放注册。
 
-#### 卫星 → 行星
+#### 原生卫星 → 行星
 
-1. TLS 建立；卫星校验证书（公共 CA 或固定指纹）。
-2. 行星先发 `HELLO`；卫星回 `HELLO_ACK`，协商版本与 nonce。
-3. 卫星发 `OPEN { target = homeId, sessionNonce, proto }`。
+1. TLS 建立；原生卫星校验证书（公共 CA 或固定指纹）。
+2. 行星先发 `HELLO`；原生卫星回 `HELLO_ACK`，协商版本与 nonce。
+3. 原生卫星发 `OPEN { target = homeId, sessionNonce, proto }`。
 4. 行星查 `homeId` 是否有在线隧道：
-   - 有：行星在隧道上以**服务端发起的偶数流**向恒星发 `OPEN { target = "session", satelliteHint? }`；恒星回 `OPEN_OK`；行星再向卫星回 `OPEN_OK { streamId }`。
+   - 有：行星在隧道上以**服务端发起的偶数流**向恒星发 `OPEN { target = "session", satelliteHint? }`；恒星回 `OPEN_OK`；行星再向原生卫星回 `OPEN_OK { streamId }`。
    - 无：`OPEN_REJECT { code = HOME_OFFLINE }`。
-5. 之后行星把卫星该流的 `DATA` 原样转发到恒星的对应流，反向亦然。
+5. 之后行星把原生卫星该流的 `DATA` 原样转发到恒星的对应流，反向亦然。
 
-> 隧道连接中恒星是客户端（奇数流）、行星是服务端（偶数流）；卫星到行星的连接中卫星是客户端（奇数流）。行星负责两侧流 ID 的映射。
+> 隧道连接中恒星是客户端（奇数流）、行星是服务端（偶数流）；原生卫星到行星的连接中原生卫星是客户端（奇数流）。行星负责两侧流 ID 的映射。
 
 行星不解析内层内容；只做流级别的转发、窗口与限流。两侧窗口独立维护：只有在对端有信用时才转发 `DATA`，并在字节被消费后向来源回 `WINDOW`，避免一侧慢消费者拖垮整条隧道。
 
-#### 卫星 → 恒星（LAN 直连）
+Web 流是例外：行星以 `OPEN { target = "web", ... }` 发起外层流，恒星用 `WEB_RESPONSE` 返回状态与响应头，之后 `DATA` 承载 HTTP 正文；不做内层会话。详见 §3.6。
 
-1. TLS 建立；卫星固定恒星 LAN 证书指纹（配对时获得）。
-2. 恒星先发 `HELLO`；卫星回 `HELLO_ACK`。
-3. 卫星发 `OPEN { target = "star", sessionNonce, proto }`。
+#### 原生卫星 → 恒星（LAN 直连）
+
+1. TLS 建立；原生卫星固定恒星 LAN 证书指纹（配对时获得）。
+2. 恒星先发 `HELLO`；原生卫星回 `HELLO_ACK`。
+3. 原生卫星发 `OPEN { target = "star", sessionNonce, proto }`。
 4. 恒星回 `OPEN_OK`。
 5. 与中继路径完全一致：内层会话在该流上运行。
 
@@ -115,7 +124,7 @@ offset  size  field
 
 - `PING` 每 20s；60s 未收到任何帧则判定断线。
 - `GOAWAY` 后不再接受新流，已有流允许在超时内完成。
-- 行星重启会断开所有隧道；恒星与卫星按退避重连。
+- 行星重启会断开所有隧道；恒星与原生卫星按退避重连。
 
 ---
 
@@ -123,7 +132,7 @@ offset  size  field
 
 ### 2.1 位置
 
-内层会话运行在**一个外层流**内。外层 `streamId` 只用于传输路由（行星可能重新映射 ID）；会话绑定由握手 transcript 派生的 `sessionId` 完成，防止跨会话拼接。
+内层会话仅用于**原生卫星**，运行在**一个外层流**内。外层 `streamId` 只用于传输路由（行星可能重新映射 ID）；会话绑定由握手 transcript 派生的 `sessionId` 完成，防止跨会话拼接。
 
 外层 `DATA` 的内容就是内层记录：
 
@@ -151,9 +160,9 @@ recordType 4  PAIR_OK
   }
 ```
 
-- 卫星从二维码取得 `starHpk`（恒星长期 HybridEncrypt 公钥）；请求端到端加密。
+- 原生卫星从二维码取得 `starHpk`（恒星长期 HybridEncrypt 公钥）；请求端到端加密。
 - 恒星校验令牌后保存设备公钥，用长期 Ed25519 私钥签名 `requestHash` 与响应。
-- 卫星校验 `sigStar` 与 `requestHash`，确认响应属于本次请求。
+- 原生卫星校验 `sigStar` 与 `requestHash`，确认响应属于本次请求。
 - 恶意行星无法读取令牌或替换设备公钥，只能丢弃/延迟。
 - 配对完成后关闭该流；后续连接走正常会话握手。
 
@@ -162,7 +171,7 @@ recordType 4  PAIR_OK
 配对时交换：
 
 - 恒星：Tink Ed25519 公钥（二维码中的 `pk`）+ LAN 证书指纹（`fp`）。
-- 卫星：Tink Ed25519 公钥（配对请求中提交）。
+- 原生卫星：Tink Ed25519 公钥（配对请求中提交）。
 
 长期密钥只用于**签名/身份认证**，不用于加密业务数据。
 
@@ -190,7 +199,7 @@ S -> C  S_HELLO {
 
 C -> S  C_AUTH {
           enc(ephS, k_c),        // 用 ephS 加密 32 字节随机 k_c
-          sigDevice(TH1)         // 卫星长期 Ed25519 签名
+          sigDevice(TH1)         // 原生卫星长期 Ed25519 签名
         }
 
 S -> C  SESSION_READY         // 首个加密帧；解密成功即确认
@@ -230,7 +239,7 @@ sessionId = TH1 的前 16 字节
 
 安全属性：
 
-- **双向认证**：卫星验 `sigStar`（二维码中的恒星公钥）；恒星验 `sigDevice`（配对时保存的设备公钥）。
+- **双向认证**：原生卫星验 `sigStar`（二维码中的恒星公钥）；恒星验 `sigDevice`（配对时保存的设备公钥）。
 - **设备绑定**：恒星校验 `deviceId` 已配对到 `homeId`；未知设备拒绝。
 - **前向保密**：临时 Hybrid 密钥 + 随机密钥材料；长期密钥泄露不影响历史会话。
 - **密钥贡献**：双方各提供 32 字节随机量。
@@ -277,6 +286,8 @@ sessionId = TH1 的前 16 字节
 
 ## 3. 应用层
 
+以下 RPC / 上传 / 下载 / 事件模型用于**原生路径**。Web 路径见 §3.6。
+
 ### 3.1 流类型
 
 `OPEN` 的 CBOR 负载：
@@ -315,7 +326,7 @@ sessionId = TH1 的前 16 字节
 
 - 状态码沿用 gRPC 语义（0 OK、3 INVALID_ARGUMENT、7 PERMISSION_DENIED、15 UNAUTHENTICATED、16 VERSION_MISMATCH 等）。
 - 请求体/响应体默认 CBOR；模块 DTO 用 kotlinx.serialization。
-- 事件：恒星发 `OPEN(kind=event)` + `DATA` + `END`；卫星回 `RESPONSE` + `END` 作为确认。
+- 事件：恒星发 `OPEN(kind=event)` + `DATA` + `END`；原生卫星回 `RESPONSE` + `END` 作为确认。
 - 取消：任一方 `RESET { code = CANCELLED }`。
 - 超时：`deadline-ms` 元数据；两端都执行。
 
@@ -353,6 +364,106 @@ sessionId = TH1 的前 16 字节
 - 内层：`C_HELLO` 交换 `protoMin/protoMax`；同时携带 `clientApiVersion`。
 - 模块：`manifest.api.star` / `client` 是整数主版本；宿主只加载支持范围内的模块。
 - RPC 方法名稳定；破坏性变更用 `.v2` 后缀或新方法名，旧方法保留至少一个大版本。
+- Web：API 前缀 `/api/web/v1/`；请求带 `X-Web-Version`，恒星拒绝不兼容的壳版本。
+
+### 3.6 Web 网关（行星 HTTPS → 恒星）
+
+Web 路径不使用内层 E2E。行星终止 TLS，把浏览器 HTTP 请求映射为恒星隧道上的外层 `WEB_HTTP` 流。
+
+#### 请求映射
+
+行星向恒星发起外层流：
+
+```
+OPEN {
+  target: "web",
+  method: "GET" | "POST" | ...,
+  path: "/api/web/v1/...",
+  headers: [[name, value], ...],   // 保留重复头（Set-Cookie 等）
+  remote: "<client ip>",
+  httpVersion: "HTTP/1.1"
+}
+DATA (请求体)*
+END
+```
+
+恒星响应：
+
+```
+WEB_RESPONSE { status: 200, headers: [[name, value], ...] }
+DATA (响应体)*
+END
+```
+
+- 对 `target=web`，`WEB_RESPONSE` 同时充当 `OPEN_OK`：收到即表示流已接受并携带响应头；拒绝用 `OPEN_REJECT`。
+- 请求/响应体都流式传输；行星不得整体缓冲大文件。
+- 恒星可在读完请求体前返回错误（如 401/413）：发 `WEB_RESPONSE` + `END`，行星停止转发并关闭请求体。
+- 行星剥离 hop-by-hop 头，补充 `X-Forwarded-For` / `X-Forwarded-Proto: https` / `X-Forwarded-Host`。
+- 行星只服务已注册的 `homeId`；未知 home 返回 `404`，恒星离线返回 `503`。
+- 行星不得记录请求/响应体、Cookie、Authorization；访问日志脱敏。
+
+#### 恒星侧路由
+
+| 路由 | 用途 |
+|---|---|
+| `GET /` | Web 壳 `index.html`（no-cache） |
+| `GET /assets/*` | 静态资源（哈希文件名，immutable） |
+| `POST /api/web/v1/auth/login` | 登录，设置会话 Cookie |
+| `POST /api/web/v1/auth/logout` | 注销 |
+| `GET /api/web/v1/me` | 当前用户/角色/CSRF token |
+| `POST /api/web/v1/rpc` | 通用 RPC（JSON） |
+| `POST /api/web/v1/upload` | 流式上传 |
+| `GET /api/web/v1/download` | 流式下载 |
+| `GET /api/web/v1/health` | 恒星/网关健康 |
+
+RPC 信封：
+
+```json
+// 请求
+{ "method": "inventory.items.list", "metadata": {}, "payload": { } }
+
+// 响应
+{ "status": 0, "code": "OK", "message": "", "metadata": {}, "payload": { } }
+```
+
+- 服务端模块用同一个 `RpcRegistry`；`req.decode<T>()` 同时支持 JSON 与 CBOR。
+- 权限仍由恒星裁决；Web 壳不持有额外权限。
+- 静态资源与 API 同源，无 CORS；禁止第三方脚本。
+
+#### 认证与会话
+
+- 浏览器用账号密码登录（`auth` 模块）；**不做设备配对**。
+- 登录成功：恒星签发 256-bit 随机会话令牌，DB 只存哈希；`Set-Cookie: __Host-homerp_web=<token>; Path=/; Secure; HttpOnly; SameSite=Strict`。
+- 同时下发 CSRF token（`__Host-homerp_csrf`，非 HttpOnly）；修改类请求必须带 `X-CSRF-Token`，并校验 `Origin`/`Referer` 与 `Host` 一致。
+- 会话：默认 12h 绝对过期 + 30min 空闲过期；可在「会话/设备」页撤销。
+- 登录限流、失败锁定；首次管理员必须由已配对的原生卫星创建。
+- 行星可见 Cookie 与密码（TLS 终端）；这是 Web 网关的信任代价。
+- Web 会话与原生设备会话分开管理；撤销即时生效。
+
+#### 安全响应头
+
+恒星设置：
+
+```
+Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self';
+  img-src 'self' data:; connect-src 'self'; frame-ancestors 'none';
+  base-uri 'none'; form-action 'self'; object-src 'none'
+X-Content-Type-Options: nosniff
+Referrer-Policy: no-referrer
+Permissions-Policy: camera=(), microphone=(), geolocation=()
+X-Frame-Options: DENY
+Cache-Control: no-store            # API
+```
+
+行星补充 `Strict-Transport-Security`。
+
+#### 限制
+
+- 请求头 ≤ 32 KiB；请求体流式，默认上限 2 GiB。
+- 普通请求超时 30s；上传/下载 1h。
+- v1 不做 SSE/WebSocket 推送；页面轮询。
+- **Web 端不加载 `.hmod`**；动态模块没有 Web UI。
+- 行星不是开放代理；必须校验 `homeId`、限流、限制并发。
 
 ---
 
@@ -371,6 +482,11 @@ sessionId = TH1 的前 16 字节
 | 会话上限 | 12h / 2^31 帧 / 8 GiB |
 | 重连退避 | 1s → 30s，指数 + 抖动 |
 | 内层协议版本 | 1（当前） |
+| Web 请求头上限 | 32 KiB |
+| Web 请求体上限 | 2 GiB（流式） |
+| Web 普通请求超时 | 30s |
+| Web 上传/下载超时 | 1h |
+| Web 会话 | 12h 绝对 / 30min 空闲 |
 
 ---
 
@@ -382,9 +498,11 @@ sessionId = TH1 的前 16 字节
 2. **多路复用**：并发流、交错 DATA、半关闭、RESET。
 3. **流控**：窗口耗尽阻塞、WINDOW 恢复、慢消费者。
 4. **握手**：正常、签名错误、版本不匹配、重放、截断。
-5. **加密**：nonce 递增、重放拒绝、AAD 绑定外层流、篡改检测。
-6. **端到端**：内存中模拟 行星 转发，验证行星无法解出内层明文。
+5. **加密**：nonce 递增、重放拒绝、AAD 绑定 `sessionId`、篡改检测。
+6. **端到端**：内存中模拟行星转发，验证行星无法解出原生内层明文。
 7. **故障**：断线重连、上传续传、超时、半开连接。
 8. **模糊测试**：帧解析与 CBOR 解码。
+9. **Web 网关**：重复头、流式上传/下载、Cookie/CSRF、路径穿越、开放代理拒绝、请求体上限、离线 503、静态缓存。
+10. **Web 安全**：CSP 头、Cookie 属性、Login 限流、会话撤销、XSS 转义。
 
 协议变更必须同时更新本文件与一致性测试。

@@ -143,6 +143,31 @@ CREATE TABLE schema_migrations (
 - 软删除的表必须有部分索引或查询约束，避免遗漏过滤。
 - 附件引用计数随业务记录事务更新。
 
+### Web 会话表（宿主）
+
+```sql
+CREATE TABLE host_web_session (
+  id               TEXT PRIMARY KEY,       -- 128-bit 随机 ID
+  user_id          TEXT NOT NULL,
+  token_hash       BLOB NOT NULL UNIQUE,   -- SHA-256(token)，32 字节
+  csrf_hash        BLOB NOT NULL,          -- SHA-256(csrf)
+  created_at       INTEGER NOT NULL,
+  last_seen_at     INTEGER NOT NULL,
+  idle_expires_at  INTEGER NOT NULL,
+  expires_at       INTEGER NOT NULL,       -- 绝对过期
+  user_agent       TEXT,
+  remote_ip        TEXT,
+  revoked_at       INTEGER
+);
+CREATE INDEX idx_web_session_user ON host_web_session(user_id);
+CREATE INDEX idx_web_session_exp  ON host_web_session(expires_at);
+```
+
+- 令牌与 CSRF 只存哈希；明文只存在于 Cookie/响应，不落库、不写日志。
+- 过期/撤销的行由宿主定时清理；`revoked_at` 非空立即失效。
+- 密码哈希属于 `auth` 模块（`m_auth_user`），不在宿主表。
+- 恢复备份后清空本表，所有 Web 会话强制重新登录。
+
 ---
 
 ## 6. 附件库
@@ -206,13 +231,13 @@ ctx.db.write { conn ->
 1. 停止恒星。
 2. 校验备份 `manifest.json` 与哈希。
 3. 替换 `star.db`、`files/`、`modules/`、`trust/`、`config/`。
-4. 启动；宿主校验 `schema_migrations` 与模块版本。
+4. 启动；宿主校验 `schema_migrations` 与模块版本，并清空 `host_web_session`。
 5. 若数据库版本高于当前宿主，拒绝启动并提示升级宿主。
 
 ### 7.3 迁移
 
 - **完整迁移**：停机后拷贝整个 `data/`（含 `secrets/`），可保留恒星身份、LAN 证书与已配对设备。
-- **仅数据备份**：默认不含 `secrets/`；恢复后恒星会生成新身份/证书，卫星需要重新配对或更新固定指纹。
+- **仅数据备份**：默认不含 `secrets/`；恢复后恒星会生成新身份/证书，原生卫星需要重新配对或更新固定指纹。
 - 换机器：拷贝 `data/`；LAN 地址变化需更新拓扑，证书不变则无需重新配对。
 - 数据库文件与附件必须一起迁移；只拷 DB 会导致附件丢失。
 - `secrets/` 与完整 `data/` 都按最高敏感级别保护，不得进入普通备份或版本库。
@@ -240,7 +265,8 @@ ctx.db.write { conn ->
 ## 10. 敏感数据
 
 - 设备公钥、角色、审计可明文存 DB。
-- 设备私钥只在卫星；恒星不保存。
+- 设备私钥只在原生卫星；恒星不保存。
+- Web 密码只存 Argon2id 哈希；Web 会话令牌/CSRF 只存 SHA-256 哈希。
 - 模块敏感配置（如第三方 API token）用宿主 `ModuleConfig`，用主密钥加密后存 DB。
 - 主密钥 `data/secrets/master.key`（0600），首次启动生成；备份时单独处理。
 - DB 文件本身不加密（v1）；依赖磁盘加密与文件权限。后续可评估 SQLCipher。
@@ -250,7 +276,7 @@ ctx.db.write { conn ->
 ## 11. 导出
 
 - 模块可注册 `export` RPC：输出 JSONL + 附件清单 + manifest。
-- 宿主提供全量导出：`star.db` 逻辑导出（按表 JSONL）+ `files/`。
+- 宿主提供全量导出：`star.db` 逻辑导出（按表 JSONL）+ `files/`；排除 `host_web_session`、`secrets/`。
 - 导入是显式管理操作；v1 只保证「同版本/可迁移版本」导入。
 - 导出文件带 SHA-256 清单，便于校验。
 
@@ -265,4 +291,6 @@ ctx.db.write { conn ->
 | 并发读连接 | 2–4 |
 | 写事务 | < 50ms |
 | WAL 文件 | 定期 checkpoint；备份前 `wal_checkpoint(TRUNCATE)` |
+| Web 会话 | 默认 12h 绝对 / 30min 空闲；定时清理 |
+| Web 上传 | 流式写临时文件，完成后登记引用；默认 2 GiB |
 | DB 大小 | 家庭规模无硬限制；> 1 GiB 时评估归档 |

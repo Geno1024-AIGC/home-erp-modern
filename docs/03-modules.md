@@ -2,20 +2,22 @@
 
 ## 1. 模块是什么
 
-一个模块同时提供**服务端能力**与**客户端 UI**：
+一个模块提供**服务端能力**与**原生客户端 UI**：
 
 | 产物 | 运行位置 | 形式 |
 |---|---|---|
 | 服务端模块 | 恒星 JVM | `star/module.jar` |
-| 桌面客户端 UI | 桌面卫星 JVM | `desktop/module.jar` |
-| Android 客户端 UI | Android 卫星 ART | `android/module.dex` |
-| 资源 | 两端 | `assets/`（图标、图片、字体、i18n） |
+| 桌面客户端 UI | 桌面原生卫星 JVM | `desktop/module.jar` |
+| Android 客户端 UI | Android 原生卫星 ART | `android/module.dex` |
+| 资源 | 原生两端 | `assets/`（图标、图片、字体、i18n） |
 | 清单 | 恒星校验 | `manifest.json` |
-| 签名 | 恒星/卫星校验 | `signature.json` |
+| 签名 | 恒星/原生卫星校验 | `signature.json` |
 
-模块可以只提供服务端能力（无 UI），也可以只提供 UI（不推荐）。v1 要求每个业务模块两端齐全。
+模块可以只提供服务端能力（无原生 UI），也可以只提供原生 UI（不推荐）。v1 要求每个业务模块至少提供服务端 + 原生 UI。
 
-内置模块与第三方模块使用**同一套 SPI**；区别只是内置模块编译进宿主、默认启用。
+**Web 不在 `.hmod` 内**：Web 壳是恒星内置的固定页面，不加载模块代码。动态模块只有服务端 RPC 与原生 UI，没有 Web UI（v1）。
+
+内置模块与第三方模块使用**同一套原生 SPI**；区别只是内置模块编译进宿主、默认启用。
 
 模块 ID 采用反向域名：`g.erp.module.inventory`。
 
@@ -78,6 +80,8 @@ ctx.rpc.unary(
 - `permission` 由宿主统一鉴权；模块不自己解析 token。
 - 一元 RPC 之外提供 `upload` / `download` / `stream` 注册器。
 - 请求带 `Identity`（用户、设备、角色）与 `deadline`。
+- `req.decode<T>()` 同时支持 CBOR（原生）与 JSON（Web）；模块代码不感知传输。
+- Web 与原生调用同一个 RPC 方法，权限与业务逻辑完全一致。
 
 ### 2.2 迁移
 
@@ -102,7 +106,7 @@ ctx.rpc.unary(
 
 ---
 
-## 3. 客户端 SPI
+## 3. 原生客户端 SPI
 
 ```kotlin
 package g.erp.api.client
@@ -140,7 +144,7 @@ interface SatelliteContext {
 }
 ```
 
-- 模块 UI 是 **Compose 代码**，不是声明式 DSL。
+- 模块 UI 是 **Compose 代码**，不是声明式 DSL；只用于 Desktop / Android。
 - 模块只能用宿主的 `RpcClient` 访问恒星；宿主不向模块暴露 Ktor/HTTP 栈。
 - 模块可以读取自己的 assets；不能读取其他模块或宿主私有文件。
 - 模块不能注册 Android `Activity`/`Service`/`Receiver`/`Provider`，不能携带 Android 资源或原生库（v1）。
@@ -164,6 +168,14 @@ interface SatelliteContext {
 - `ctx.storage` 是模块命名空间下的键值 + 文件目录；升级保留，卸载时询问是否删除。
 - 不用于业务数据；业务数据必须在恒星。
 
+### 3.3 Web UI（固定壳）
+
+- Web 壳由宿主提供，源码在 `satellite/web/`，构建产物打进恒星。
+- 壳内置固定页面：登录、仪表盘、库存、任务、文档、资产、设置/会话/模块管理。
+- 页面通过 `/api/web/v1/rpc` 调用与原生相同的 RPC；不加载 `.hmod`。
+- 动态模块没有 Web UI；Web 的模块管理页只能查看/启用/禁用，不能渲染模块自定义页面。
+- 壳是普通 TypeScript + HTML/CSS，无框架、零运行时依赖；用户内容必须用 `textContent` 或严格转义。
+
 ---
 
 ## 4. `.hmod` 包格式
@@ -181,6 +193,8 @@ assets/strings/en.json
 assets/strings/zh-CN.json
 ...
 ```
+
+`.hmod` **只包含原生产物**；Web 壳不在模块包内，也不能被模块扩展。
 
 ### 4.1 manifest.json
 
@@ -248,9 +262,9 @@ SHA-256(
 - 恒星维护信任库：`data/trust/publishers/<keyId>.pub`（公钥 + 标签）。
 - 只有受信任发布者签名的模块可安装；未签名模块只能在显式的 `developerMode` 下加载，且不得用于发布。
 
-### 4.3 恒星对卫星的背书
+### 4.3 恒星对原生卫星的背书
 
-卫星不一定配置发布者信任库。恒星在安装/启用后签发：
+原生卫星不一定配置发布者信任库。恒星在安装/启用后签发：
 
 ```
 ModuleAttestation {
@@ -260,9 +274,9 @@ ModuleAttestation {
 }
 ```
 
-用恒星 Ed25519 私钥签名，随模块包一起下发。卫星用配对时保存的恒星公钥验签，然后校验各产物哈希。
+用恒星 Ed25519 私钥签名，随模块包一起下发。原生卫星用配对时保存的恒星公钥验签，然后校验各产物哈希。
 
-因此信任链是：**卫星信任恒星 → 恒星信任发布者 → 发布者签名模块**。
+因此信任链是：**原生卫星信任恒星 → 恒星信任发布者 → 发布者签名模块**。
 
 ---
 
@@ -275,7 +289,7 @@ ModuleAttestation {
 plugins { id("g.erp.module.star") }
 
 // modules/inventory/client/build.gradle.kts
-plugins { id("g.erp.module.client") }   // KMP: androidTarget + jvm("desktop")
+plugins { id("g.erp.module.client") }   // KMP: androidTarget + jvm("desktop")；仅原生
 ```
 
 - `g.erp.module.star`：JVM 库，`compileOnly(project(":core:star-api"))`，产出 `module.jar`。
@@ -292,13 +306,23 @@ plugins { id("g.erp.module.client") }   // KMP: androidTarget + jvm("desktop")
 
 ### 5.3 CI 产物
 
-- 每次构建产出：`star`/`planet` 分发包、桌面卫星包、Android APK、所有内置模块 `.hmod`。
-- 模块版本独立（SemVer）；宿主版本独立。
+- 每次构建产出：`star`/`planet` 分发包、桌面原生卫星包、Android APK、Web 壳静态包、所有内置模块 `.hmod`。
+- 模块版本独立（SemVer）；宿主版本独立；Web 壳版本跟宿主。
 - 产物带 SHA-256 清单；发布页附签名公钥指纹。
+
+### 5.4 Web 壳构建
+
+- 源码：`satellite/web/src/`；`tsc` 编译到 `satellite/web/dist/`。
+- 构建时把 `dist/` 打进恒星资源（`star/src/main/resources/web/`），随恒星分发。
+- 无 npm 运行时依赖；`typescript` 仅构建期使用。
+- 静态资源文件名带内容哈希；`index.html` 引用带版本的入口。
+- Web 壳不能加载第三方脚本、字体或 CDN；所有资源同源。
 
 ---
 
-## 6. 动态加载
+## 6. 动态加载（仅原生）
+
+Web 壳不参与动态加载；以下策略只适用于 Desktop / Android。
 
 ### 6.1 类加载器策略
 
@@ -350,7 +374,7 @@ upload/verify → resolve deps → load classloader → migrations → install �
 - 卸载：停用 → 删除包；数据库保留，除非显式清理。
 - 失败：回滚到上一版本；保留日志与失败原因。
 
-**卫星**
+**原生卫星**
 
 ```
 download → verify attestation + hashes → store → load → contribute UI
@@ -449,3 +473,5 @@ class InventoryClientModule : SatelliteModule {
 - Android 卸载/升级需要重启进程才能释放代码。
 - 不支持同一模块多版本并存。
 - 不承诺热升级不中断；升级期间相关 RPC 可能短暂不可用。
+- Web 端不加载模块，也没有模块自定义页面；动态模块只影响服务端 RPC 与原生 UI。
+- Web 的固定页面与 RPC 需要随宿主版本一起发布；模块不能扩展 Web 路由。

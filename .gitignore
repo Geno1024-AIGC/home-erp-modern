@@ -15,6 +15,11 @@ build/
 local.properties
 *.log
 
+# Web
+node_modules/
+satellite/web/dist/
+*.tsbuildinfo
+
 # Runtime data (never commit)
 data/
 *.db

@@ -184,6 +184,7 @@ S -> C  S_HELLO {
           ns,                    // 32 字节随机
           ephS,                  // 恒星临时 Hybrid 公钥 keyset
           enc(ephC, k_s),        // 用 ephC 加密 32 字节随机 k_s
+          capabilities,
           sigStar(TH0)           // 恒星长期 Ed25519 签名
         }
 
@@ -195,12 +196,28 @@ C -> S  C_AUTH {
 S -> C  SESSION_READY         // 首个加密帧；解密成功即确认
 ```
 
-其中：
+transcript 使用**长度前缀的字段字节**，不依赖 CBOR 重新序列化：
 
 ```
-TH0 = SHA-256("home-erp/session/v1" || C_HELLO || S_HELLO 去掉 sigStar)
-TH1 = SHA-256(TH0 || C_AUTH 去掉 sigDevice)
+lp(x) = u32(len(x)) || x
+
+TH0 = SHA-256(
+  "home-erp/session/v1"
+  || u16(protoMin) || u16(protoMax)
+  || lp(homeId) || lp(deviceId)
+  || nc (32B)
+  || lp(ephC) || lp(capC)
+  || u16(proto)
+  || ns (32B)
+  || lp(ephS) || lp(enc_s) || lp(capS)
+)
+
+TH1 = SHA-256(TH0 || lp(enc_c))
 ```
+
+- `capC` / `capS` 为 capabilities 的规范 CBOR 字节。
+- 双方必须使用收到的原始字段字节计算，不得先解析再重新编码。
+- `sigStar` 不参与 TH0；`sigDevice` 不参与 TH1。
 
 会话密钥：
 

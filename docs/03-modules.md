@@ -333,6 +333,7 @@ val module = loader.loadClass(entrypoint).getDeclaredConstructor().newInstance()
 - 父加载器提供宿主 API、Kotlin、Compose、Tink。
 - ART 不能卸载已加载的类；**升级/卸载需要重启应用进程**。UI 入口可以立即移除。
 - 模块 DEX 用 `d8 --min-api 26` 生成；不得包含 Android 资源、manifest 组件或原生库。
+- 单个模块 DEX 建议 ≤ 64K 方法；超出需拆分模块或启用 multidex（v1 不自动处理）。
 - 首次加载前校验恒星背书签名与产物哈希；模块包存内部存储，不读外部存储。
 - **发布政策**：动态代码加载在 Google Play 上受限；本项目通过 GitHub/自建渠道分发。若未来上架 Play，需改用 Play Feature Delivery 或重新评估。
 

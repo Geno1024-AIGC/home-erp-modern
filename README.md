@@ -48,6 +48,7 @@ docs/                        设计文档
 
 | 文档 | 内容 |
 |---|---|
+| [00-overview.md](docs/00-overview.md) | 一页纸总览、关键取舍、推荐阅读顺序 |
 | [01-architecture.md](docs/01-architecture.md) | 目标、角色、部署拓扑、连接策略、技术栈 |
 | [02-protocol.md](docs/02-protocol.md) | 外层中继帧、流复用、原生内层加密、Web HTTPS 网关、RPC |
 | [03-modules.md](docs/03-modules.md) | 模块 SPI、`.hmod` 包格式、签名、原生动态加载、Web 固定壳 |

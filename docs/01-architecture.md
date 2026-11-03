@@ -262,7 +262,7 @@ core/
 modules/
   members/          star + client
   auth/
-  locations/        位置树（core）
+  locations/        位置森林（core）
   inventory/        物品记录（含耐用品）
   tasks/            家务与任务
   documents/        说明书 / 凭证

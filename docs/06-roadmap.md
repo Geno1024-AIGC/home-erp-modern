@@ -59,7 +59,7 @@
 - `star` 应用：配置、日志、WSS 服务端、行星拨出、配对、拓扑。
 - SQLite `Db`、迁移、附件库、备份/恢复 CLI。
 - `core:star-api`：`StarModule`、`StarContext`、`RpcRegistry`、权限。
-- 核心模块：`members`、`auth`（账号、角色、设备）、`locations`（位置树）。
+- 核心模块：`members`、`auth`（账号、角色、设备）、`locations`（位置森林，多地点根）。
 - 首个业务模块：`inventory` 服务端（CRUD + 位置引用）。
 
 **验收**

@@ -8,7 +8,7 @@
 |---|---|---|---|---|
 | `members` | 家庭成员 | core | planned | 人员资料、家庭关系 |
 | `auth` | 登录与角色 | core | planned | 账号、角色、会话 |
-| `locations` | 位置 | core | draft | 位置树 |
+| `locations` | 位置 | core | draft | 位置森林（多地点根） |
 | `documents` | 文档与说明书 | business | draft | 文件、文档元数据、实体关联 |
 | `inventory` | 物品 | business | draft | 物品主数据、库存、耐用品字段 |
 | `tasks` | 家务与任务 | business | draft | 任务模板、周期、完成记录 |
@@ -44,7 +44,7 @@ flowchart LR
 
 | 模块 | 拥有的表/文件 | 只引用 |
 |---|---|---|
-| `locations` | `m_locations_node` | 无 |
+| `locations` | `m_locations_node`（多 Level 0 根） | 无 |
 | `inventory` | `m_inventory_item`、`m_inventory_lot`、`m_inventory_movement` | `location_id` |
 | `documents` | `m_documents_doc`、`m_documents_link`、`files/` | `target_type` + `target_id` |
 | `tasks` | `m_tasks_template`、`m_tasks_occurrence`、`m_tasks_completion` | `assignee_id`、`subject_type` + `subject_id` |
@@ -56,6 +56,7 @@ flowchart LR
 
 - **不共享业务表**；跨模块只传逻辑 ID，不建跨模块外键。
 - 「某位置有什么」由 `inventory` 按 `location_id` 查询，`locations` 不存物品。
+- 位置森林允许多个 Level 0 地点（自己家、老家、工作地、伴侣住处）；根之间平级。
 - 说明书的文件与关联由 `documents` 拥有；`inventory` 只在详情页调用 `documents` RPC。
 - 任务完成记录由 `tasks` 拥有；不要在其他模块复制「已完成」状态。
 - 奖项/证书记录由 `achievements` 拥有；证书扫描件与关联由 `documents` 拥有。

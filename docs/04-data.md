@@ -269,6 +269,7 @@ ctx.db.write { conn ->
 - Web 密码只存 Argon2id 哈希；Web 会话令牌/CSRF 只存 SHA-256 哈希。
 - 模块敏感配置（如第三方 API token）用宿主 `ModuleConfig`，用主密钥加密后存 DB。
 - 业务表不存完整证件号/银行卡号/CVV/PIN；证件模块只存掩码/后四位，完整信息放扫描件；扫描件按最高敏感级别保护。
+- 水印分享副本默认不落盘；如落盘，按派生文件纳入 `file_refs` 与 GC，不得覆盖原文件。
 - 主密钥 `data/secrets/master.key`（0600），首次启动生成；备份时单独处理。
 - DB 文件本身不加密（v1）；依赖磁盘加密与文件权限。后续可评估 SQLCipher。
 

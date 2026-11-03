@@ -4,7 +4,7 @@
 
 ## 1. 目的与非目标
 
-**目的**：保存家里的文件与元数据，并关联到物品、位置、任务、奖项/证书等实体。典型场景是电器说明书，也包括保修卡、发票、奖状照片、证书扫描件。
+**目的**：保存家里的文件与元数据，并关联到物品、位置、任务、奖项/证书、证件/卡片等实体。典型场景是电器说明书，也包括保修卡、发票、奖状照片、证书扫描件、身份证/银行卡扫描件。
 
 **非目标**：
 
@@ -38,9 +38,9 @@
 
 `kind`：`manual`、`receipt`、`warranty`、`photo`、`other`。
 
-`target_type`：`inventory.item`、`locations.node`、`tasks.task`、`achievements.record`。
+`target_type`：`inventory.item`、`locations.node`、`tasks.task`、`achievements.record`、`identity.record`。
 
-`role`：`manual`、`photo`、`receipt`、`warranty`、`certificate`、`evidence`、`attachment`。
+`role`：`manual`、`photo`、`receipt`、`warranty`、`certificate`、`evidence`、`id_scan`、`card_scan`、`attachment`。
 
 规则：
 
@@ -124,6 +124,7 @@ CREATE INDEX idx_documents_link_target ON m_documents_link(target_type, target_i
 
 - 上传 PDF 说明书并关联到物品；物品详情可见。
 - 上传证书扫描件并关联到奖项/证书记录。
+- 上传身份证/银行卡扫描件并关联到证件/卡记录。
 - 同一文档关联多个物品；同一物品多份文档。
 - 按标题/类型/语言/关联实体搜索。
 - 删除关联不删文件；GC 只清理无引用且超过安全窗口的文件。

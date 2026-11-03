@@ -176,8 +176,9 @@
 2. `tasks`（家务/任务：周期任务、分派、完成记录）
 3. `documents`（说明书/凭证：扫描、归档、关联）
 4. `achievements`（奖项与证书：成员荣誉、证书、资格、到期标记）
+5. `identity`（证件与卡片：身份证、护照、驾驶证、通行证、银行卡）
 
-`assets` 暂缓，v1 由 `inventory.kind=durable` 覆盖。
+`assets` 暂缓，v1 由 `inventory.kind=durable` 覆盖。`identity` 实施前先定敏感字段与审计策略。
 
 每个模块：
 

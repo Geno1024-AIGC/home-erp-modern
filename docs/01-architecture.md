@@ -267,6 +267,7 @@ modules/
   tasks/            家务与任务
   documents/        说明书 / 凭证
   achievements/     奖项与证书
+  identity/         证件与卡片
 star/
 planet/
 satellite/

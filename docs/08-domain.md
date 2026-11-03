@@ -12,6 +12,7 @@
 | `documents` | 文档与说明书 | business | draft | 文件、文档元数据、实体关联 |
 | `inventory` | 物品 | business | draft | 物品主数据、库存、耐用品字段 |
 | `tasks` | 家务与任务 | business | draft | 任务模板、周期、完成记录 |
+| `calendar` | 日历 | business | draft | 事件、纪念日、生日、参与者 |
 | `achievements` | 奖项与证书 | business | draft | 成员奖项、荣誉、证书、资格 |
 | `identity` | 证件与卡片 | business | draft | 成员证件、通行证、社保卡、银行卡 |
 | `assets` | 资产 | deferred | — | 暂并入 `inventory.kind=durable`，后续再评估拆分 |
@@ -30,7 +31,11 @@ flowchart LR
     Inventory["inventory<br/>物品"] --> Locations["locations<br/>位置"]
     Tasks["tasks<br/>家务与任务"] --> Locations
     Tasks --> Inventory
+    Calendar["calendar<br/>日历"]
+    Calendar --> Members
+    Calendar --> Locations
     Documents["documents<br/>文档 / 说明书"] --> Inventory
+    Documents --> Calendar
     Documents --> Locations
     Documents --> Tasks
     Achievements["achievements<br/>奖项与证书"]
@@ -52,6 +57,7 @@ flowchart LR
 | `inventory` | `m_inventory_item`、`m_inventory_lot`、`m_inventory_movement` | `location_id` |
 | `documents` | `m_documents_doc`、`m_documents_link`、`files/` | `target_type` + `target_id` |
 | `tasks` | `m_tasks_template`、`m_tasks_occurrence`、`m_tasks_completion` | `assignee_id`、`subject_type` + `subject_id` |
+| `calendar` | `m_calendar_event`、`m_calendar_event_member` | `member_id`、`location_id` |
 | `achievements` | `m_achievements_record` | `member_id` |
 | `identity` | `m_identity_record` | `member_id` |
 | `members` | 人员与家庭关系 | 无 |
@@ -64,6 +70,7 @@ flowchart LR
 - 位置森林允许多个 Level 0 地点（自己家、老家、工作地、伴侣住处）；根之间平级。
 - 说明书的文件与关联由 `documents` 拥有；`inventory` 只在详情页调用 `documents` RPC。
 - 任务完成记录由 `tasks` 拥有；不要在其他模块复制「已完成」状态。
+- 事件、纪念日、生日由 `calendar` 拥有；日历只读叠加 `tasks` 到期项，不复制任务。
 - 奖项/证书记录由 `achievements` 拥有；证书扫描件与关联由 `documents` 拥有。
 - 证件/卡片记录由 `identity` 拥有；只存掩码/后四位，完整信息看扫描件。
 - 水印分享由 `documents` 生成；`identity` 只提供入口与上下文，不复制文件。
@@ -86,3 +93,5 @@ flowchart LR
 - 证件/银行卡完整号码是否需要宿主加密字段。
 - 证件到期是否由 `tasks` 自动生成提醒。
 - 水印分享是否需要持久化分享记录与撤销入口。
+- 日历是否支持农历、单次例外、私密事件。
+- 日历中的任务叠加是否允许直接改期，还是只读。

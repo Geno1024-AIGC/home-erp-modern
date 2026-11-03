@@ -265,6 +265,7 @@ modules/
   locations/        位置森林（core）
   inventory/        物品记录（含耐用品）
   tasks/            家务与任务
+  calendar/         日历与纪念日
   documents/        说明书 / 凭证
   achievements/     奖项与证书
   identity/         证件与卡片

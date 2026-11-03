@@ -45,8 +45,9 @@
 | `documents` | 文档与说明书 | business | draft | — | [documents.md](documents.md) |
 | `inventory` | 物品 | business | draft | `locations`、`documents`（可选） | [inventory.md](inventory.md) |
 | `tasks` | 家务与任务 | business | draft | `locations`、`inventory`、`members`、`documents`（可选） | [tasks.md](tasks.md) |
+| `calendar` | 日历 | business | draft | `members`、`locations`（可选）、`documents`（可选）、`tasks`（可选） | [calendar.md](calendar.md) |
 | `achievements` | 奖项与证书 | business | draft | `members`、`documents`（可选）、`tasks`（可选） | [achievements.md](achievements.md) |
 | `identity` | 证件与卡片 | business | draft | `members`、`documents`（可选）、`tasks`（可选） | [identity.md](identity.md) |
 | `assets` | 资产 | deferred | — | — | 先并入 `inventory` |
 
-当前已写：`locations`、`inventory`、`documents`、`tasks`、`achievements`、`identity`。其余模块等进入路线图时再写。
+当前已写：`locations`、`inventory`、`documents`、`tasks`、`calendar`、`achievements`、`identity`。其余模块等进入路线图时再写。

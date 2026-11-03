@@ -175,6 +175,7 @@
 1. `inventory`（物品：位置、数量、保质期、出入库、耐用品保修）
 2. `tasks`（家务/任务：周期任务、分派、完成记录）
 3. `documents`（说明书/凭证：扫描、归档、关联）
+4. `achievements`（奖项与证书：成员荣誉、证书、资格、到期标记）
 
 `assets` 暂缓，v1 由 `inventory.kind=durable` 覆盖。
 

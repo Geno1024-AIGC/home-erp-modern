@@ -266,6 +266,7 @@ modules/
   inventory/        物品记录（含耐用品）
   tasks/            家务与任务
   documents/        说明书 / 凭证
+  achievements/     奖项与证书
 star/
 planet/
 satellite/

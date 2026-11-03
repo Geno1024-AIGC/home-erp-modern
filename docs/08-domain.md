@@ -12,6 +12,7 @@
 | `documents` | 文档与说明书 | business | draft | 文件、文档元数据、实体关联 |
 | `inventory` | 物品 | business | draft | 物品主数据、库存、耐用品字段 |
 | `tasks` | 家务与任务 | business | draft | 任务模板、周期、完成记录 |
+| `achievements` | 奖项与证书 | business | draft | 成员奖项、荣誉、证书、资格 |
 | `assets` | 资产 | deferred | — | 暂并入 `inventory.kind=durable`，后续再评估拆分 |
 
 - **core**：内置、默认启用；其他模块可以依赖，但不建议卸载。
@@ -31,6 +32,9 @@ flowchart LR
     Documents["documents<br/>文档 / 说明书"] --> Inventory
     Documents --> Locations
     Documents --> Tasks
+    Achievements["achievements<br/>奖项与证书"]
+    Documents --> Achievements
+    Achievements --> Members
     Tasks --> Members
 ```
 
@@ -44,6 +48,7 @@ flowchart LR
 | `inventory` | `m_inventory_item`、`m_inventory_lot`、`m_inventory_movement` | `location_id` |
 | `documents` | `m_documents_doc`、`m_documents_link`、`files/` | `target_type` + `target_id` |
 | `tasks` | `m_tasks_template`、`m_tasks_occurrence`、`m_tasks_completion` | `assignee_id`、`subject_type` + `subject_id` |
+| `achievements` | `m_achievements_record` | `member_id` |
 | `members` | 人员与家庭关系 | 无 |
 | `auth` | 账号、角色、会话 | `member_id` |
 
@@ -53,6 +58,7 @@ flowchart LR
 - 「某位置有什么」由 `inventory` 按 `location_id` 查询，`locations` 不存物品。
 - 说明书的文件与关联由 `documents` 拥有；`inventory` 只在详情页调用 `documents` RPC。
 - 任务完成记录由 `tasks` 拥有；不要在其他模块复制「已完成」状态。
+- 奖项/证书记录由 `achievements` 拥有；证书扫描件与关联由 `documents` 拥有。
 - 跨模块展示数据可以短 TTL 缓存；写操作必须回到拥有者。
 
 ## 4. 跨模块流程
@@ -67,3 +73,5 @@ flowchart LR
 - 位置移动历史归 `locations` 还是 `inventory`；当前倾向由 `inventory` 的库存流水记录。
 - 说明书是否做 OCR/全文搜索；v1 先按标题、类型、语言、关联实体搜索。
 - 任务完成是否允许照片；若允许，照片作为 `documents` 关联，不复制文件。
+- 证书到期是否由 `tasks` 自动生成提醒。
+- 共同获奖是否需要一条记录关联多个成员。

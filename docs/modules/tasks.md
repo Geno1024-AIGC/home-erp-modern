@@ -29,6 +29,7 @@
 - 物品状态由 `inventory` 拥有；任务完成不回写物品数量。
 - 完成照片归 `documents`；`tasks` 只存文档 ID 或通过 `documents.link` 关联。
 - 日历只读叠加任务到期项；任务状态、改期、完成仍由 `tasks` 拥有。
+- 宠物护理计划由 `tasks` 建模板，`subject_type` 可指向 `pets.pet`。
 - 提醒/通知由通知能力负责（后续）；`tasks` 只产生事件。
 
 ## 4. 领域模型

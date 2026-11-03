@@ -267,6 +267,7 @@ modules/
   tasks/            家务与任务
   calendar/         日历与纪念日
   meals/            菜谱、菜单、采购
+  health/           健康与医疗
   documents/        说明书 / 凭证
   achievements/     奖项与证书
   identity/         证件与卡片

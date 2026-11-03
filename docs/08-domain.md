@@ -14,6 +14,7 @@
 | `tasks` | 家务与任务 | business | draft | 任务模板、周期、完成记录 |
 | `calendar` | 日历 | business | draft | 事件、纪念日、生日、参与者 |
 | `meals` | 饮食与采购 | business | draft | 菜谱、菜单、采购清单 |
+| `health` | 健康与医疗 | business | draft | 人类健康记录、疫苗、用药、过敏 |
 | `achievements` | 奖项与证书 | business | draft | 成员奖项、荣誉、证书、资格 |
 | `identity` | 证件与卡片 | business | draft | 成员证件、通行证、社保卡、银行卡 |
 | `assets` | 资产 | deferred | — | 暂并入 `inventory.kind=durable`，后续再评估拆分 |
@@ -36,9 +37,12 @@ flowchart LR
     Calendar --> Members
     Calendar --> Locations
     Meals["meals<br/>饮食与采购"] --> Inventory
+    Health["health<br/>健康与医疗"]
+    Health --> Members
     Documents["documents<br/>文档 / 说明书"] --> Inventory
     Documents --> Calendar
     Documents --> Meals
+    Documents --> Health
     Documents --> Locations
     Documents --> Tasks
     Achievements["achievements<br/>奖项与证书"]
@@ -62,6 +66,7 @@ flowchart LR
 | `tasks` | `m_tasks_template`、`m_tasks_occurrence`、`m_tasks_completion` | `assignee_id`、`subject_type` + `subject_id` |
 | `calendar` | `m_calendar_event`、`m_calendar_event_member` | `member_id`、`location_id` |
 | `meals` | `m_meals_recipe`、`m_meals_recipe_ingredient`、`m_meals_plan`、`m_meals_grocery_item` | `inventory_item_id`、`recipe_id` |
+| `health` | `m_health_record` | `member_id` |
 | `achievements` | `m_achievements_record` | `member_id` |
 | `identity` | `m_identity_record` | `member_id` |
 | `members` | 人员与家庭关系 | 无 |
@@ -76,6 +81,7 @@ flowchart LR
 - 任务完成记录由 `tasks` 拥有；不要在其他模块复制「已完成」状态。
 - 事件、纪念日、生日由 `calendar` 拥有；日历只读叠加 `tasks` 到期项，不复制任务。
 - 菜谱、菜单、采购清单由 `meals` 拥有；库存数量仍由 `inventory` 拥有，采购任务仍由 `tasks` 拥有。
+- 人类健康记录由 `health` 拥有；默认私密，预约归 `calendar`，提醒归 `tasks`，报告归 `documents`。
 - 奖项/证书记录由 `achievements` 拥有；证书扫描件与关联由 `documents` 拥有。
 - 证件/卡片记录由 `identity` 拥有；只存掩码/后四位，完整信息看扫描件。
 - 水印分享由 `documents` 生成；`identity` 只提供入口与上下文，不复制文件。
@@ -102,3 +108,5 @@ flowchart LR
 - 日历中的任务叠加是否允许直接改期，还是只读。
 - 菜单计划是否显示在日历主视图；v1 先留在 `meals`。
 - 采购清单是否与库存的购物清单合并；v1 由 `meals` 独占。
+- 健康记录是否需要字段级加密、更细的成员 ACL、管理员破窗。
+- 健康预约/提醒是否允许从健康模块直接创建，还是只跳转。

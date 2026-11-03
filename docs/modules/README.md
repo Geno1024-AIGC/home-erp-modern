@@ -47,8 +47,9 @@
 | `tasks` | 家务与任务 | business | draft | `locations`、`inventory`、`members`、`documents`（可选） | [tasks.md](tasks.md) |
 | `calendar` | 日历 | business | draft | `members`、`locations`（可选）、`documents`（可选）、`tasks`（可选） | [calendar.md](calendar.md) |
 | `meals` | 饮食与采购 | business | draft | `inventory`（可选）、`tasks`（可选）、`calendar`（可选）、`documents`（可选） | [meals.md](meals.md) |
+| `health` | 健康与医疗 | business | draft | `members`、`documents`（可选）、`calendar`（可选）、`tasks`（可选） | [health.md](health.md) |
 | `achievements` | 奖项与证书 | business | draft | `members`、`documents`（可选）、`tasks`（可选） | [achievements.md](achievements.md) |
 | `identity` | 证件与卡片 | business | draft | `members`、`documents`（可选）、`tasks`（可选） | [identity.md](identity.md) |
 | `assets` | 资产 | deferred | — | — | 先并入 `inventory` |
 
-当前已写：`locations`、`inventory`、`documents`、`tasks`、`calendar`、`meals`、`achievements`、`identity`。其余模块等进入路线图时再写。
+当前已写：`locations`、`inventory`、`documents`、`tasks`、`calendar`、`meals`、`health`、`achievements`、`identity`。其余模块等进入路线图时再写。

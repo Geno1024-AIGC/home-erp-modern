@@ -30,14 +30,16 @@ flowchart LR
 
 1. 本文 + [README](../README.md)（5 分钟）
 2. [01-architecture.md](01-architecture.md) §2–§4：角色、拓扑、连接（15 分钟）
-3. [07-decisions.md](07-decisions.md) 的 D1 / D3 / D21 / D22：为什么这样取舍（10 分钟）
+3. [07-decisions.md](07-decisions.md) 的 D1 / D3 / D21 / D22：为什么这样取舍；写模块文档看 D23（10 分钟）
 4. [02-protocol.md](02-protocol.md) §1、§2.3、§3.6：外层帧、握手、Web 网关（15 分钟）
 5. 其余按需查：
-   - 做模块看 [03-modules.md](03-modules.md)
+   - 做模块看 [03-modules.md](03-modules.md) 与 [modules/](modules/)
+   - 跨模块流程看 [flows/](flows/)
+   - 领域边界看 [08-domain.md](08-domain.md)
    - 改数据看 [04-data.md](04-data.md)
    - 做安全评审看 [05-security.md](05-security.md)
    - 排期看 [06-roadmap.md](06-roadmap.md)
 
 ## 现在到哪了
 
-设计基线已完成，尚无运行代码。下一步是 M0：Gradle 脚手架、模块骨架、Web 构建链。
+设计基线与业务模块文档结构已落地，尚无运行代码。下一步是 M0：Gradle 脚手架、模块骨架、Web 构建链。

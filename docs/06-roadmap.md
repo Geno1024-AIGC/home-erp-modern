@@ -59,8 +59,8 @@
 - `star` 应用：配置、日志、WSS 服务端、行星拨出、配对、拓扑。
 - SQLite `Db`、迁移、附件库、备份/恢复 CLI。
 - `core:star-api`：`StarModule`、`StarContext`、`RpcRegistry`、权限。
-- 核心模块：`members`、`auth`（账号、角色、设备）。
-- 首个业务模块：`inventory` 服务端（CRUD + 附件）。
+- 核心模块：`members`、`auth`（账号、角色、设备）、`locations`（位置树）。
+- 首个业务模块：`inventory` 服务端（CRUD + 位置引用）。
 
 **验收**
 
@@ -172,10 +172,11 @@
 
 按用户优先级：
 
-1. `inventory`（存货/物资：库位、数量、保质期、出入库、购物清单）
-2. `tasks`（家务/任务：周期任务、分派、提醒）
-3. `assets`（家庭资产/设备：保修、维护记录）
-4. `documents`（文档/凭证：扫描、归档、关联）
+1. `inventory`（物品：位置、数量、保质期、出入库、耐用品保修）
+2. `tasks`（家务/任务：周期任务、分派、完成记录）
+3. `documents`（说明书/凭证：扫描、归档、关联）
+
+`assets` 暂缓，v1 由 `inventory.kind=durable` 覆盖。
 
 每个模块：
 
@@ -183,7 +184,7 @@
 - 原生客户端：导航页、列表/详情/编辑、离线错误处理。
 - Web：宿主固定壳中的列表/详情/编辑页（不随模块动态加载）。
 - 测试：迁移、权限、关键流程。
-- README：数据模型与 RPC 列表。
+- 模块卡：同步 `docs/modules/<id>.md` 的数据模型与 RPC 列表。
 
 **验收**
 

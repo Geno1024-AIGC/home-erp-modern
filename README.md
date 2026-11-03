@@ -56,6 +56,9 @@ docs/                        设计文档
 | [05-security.md](docs/05-security.md) | 原生/Web 双路径威胁模型、配对、密钥、授权、供应链 |
 | [06-roadmap.md](docs/06-roadmap.md) | 里程碑、验收标准、风险与前置验证 |
 | [07-decisions.md](docs/07-decisions.md) | 架构决策记录（ADR） |
+| [08-domain.md](docs/08-domain.md) | 领域地图、模块边界、术语 |
+| [modules/](docs/modules/) | 业务模块卡、模板与注册表 |
+| [flows/](docs/flows/) | 跨模块流程 |
 
 ## 构建（计划）
 

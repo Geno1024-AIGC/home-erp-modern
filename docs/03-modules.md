@@ -19,7 +19,7 @@
 
 内置模块与第三方模块使用**同一套原生 SPI**；区别只是内置模块编译进宿主、默认启用。
 
-模块 ID 采用反向域名：`g.erp.module.inventory`。
+模块 ID 采用反向域名：`g.erp.module.inventory`。业务模块卡与注册表见 [modules/](modules/README.md)。
 
 ---
 

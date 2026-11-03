@@ -261,10 +261,11 @@ core/
   ui/               Compose 设计系统与通用组件
 modules/
   members/          star + client
-  inventory/
-  tasks/
-  assets/
-  documents/
+  auth/
+  locations/        位置树（core）
+  inventory/        物品记录（含耐用品）
+  tasks/            家务与任务
+  documents/        说明书 / 凭证
 star/
 planet/
 satellite/

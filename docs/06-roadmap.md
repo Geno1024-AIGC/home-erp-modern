@@ -178,6 +178,7 @@
 4. `documents`（说明书/凭证：扫描、归档、关联、水印分享）
 5. `achievements`（奖项与证书：成员荣誉、证书、资格、到期标记）
 6. `identity`（证件与卡片：身份证、护照、驾驶证、通行证、银行卡、水印分享）
+7. `meals`（饮食与采购：菜谱、周菜单、采购清单）
 
 `assets` 暂缓，v1 由 `inventory.kind=durable` 覆盖。`identity` 实施前先定敏感字段与审计策略。
 

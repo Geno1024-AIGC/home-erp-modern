@@ -22,6 +22,7 @@
 - 在物品详情页直接打开说明书、保修卡、发票。
 - 把身份证/银行卡扫描件加水印后发给银行、学校或租房中介。
 - 给旅行/活动事件附邀请函、门票、行程单。
+- 给菜谱附成品照片。
 - 归档旧文件，但保留关联历史。
 
 ## 3. 边界与依赖
@@ -43,7 +44,7 @@
 
 `kind`：`manual`、`receipt`、`warranty`、`photo`、`other`。
 
-`target_type`：`inventory.item`、`locations.node`、`tasks.task`、`calendar.event`、`achievements.record`、`identity.record`。
+`target_type`：`inventory.item`、`locations.node`、`tasks.task`、`calendar.event`、`meals.recipe`、`achievements.record`、`identity.record`。
 
 `role`：`manual`、`photo`、`receipt`、`warranty`、`certificate`、`evidence`、`id_scan`、`card_scan`、`attachment`。
 

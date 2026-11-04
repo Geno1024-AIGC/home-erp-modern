@@ -104,6 +104,12 @@ ctx.rpc.unary(
 - `ctx.scheduler.every(interval) { ... }`：宿主统一调度，模块停用时取消。
 - 跨进程/跨设备事件通过内层 `EVENT` 流推送。
 
+### 2.5 领域扩展点
+
+- 宿主只提供通用模块机制；领域 SPI 由模块定义并在自己的文档中冻结。
+- 例：`smart_home` 定义 `DeviceProfile` / `Capability` / `ProtocolDriver`；协议驱动是独立 `.hmod`，依赖 `smart_home`，不改宿主 API。
+- 领域扩展点必须有 API 主版本、契约测试与签名校验；不得把厂商 SDK 暴露给核心或 UI。
+
 ---
 
 ## 3. 原生客户端 SPI
@@ -171,7 +177,7 @@ interface SatelliteContext {
 ### 3.3 Web UI（固定壳）
 
 - Web 壳由宿主提供，源码在 `satellite/web/`，构建产物打进恒星。
-- 壳内置固定页面：登录、仪表盘、库存、任务、文档、资产、设置/会话/模块管理。
+- 壳内置固定页面：登录、仪表盘、库存、任务、文档、资产、智能家居、设置/会话/模块管理。
 - 页面通过 `/api/web/v1/rpc` 调用与原生相同的 RPC；不加载 `.hmod`。
 - 动态模块没有 Web UI；Web 的模块管理页只能查看/启用/禁用，不能渲染模块自定义页面。
 - 壳是普通 TypeScript + HTML/CSS，无框架、零运行时依赖；用户内容必须用 `textContent` 或严格转义。

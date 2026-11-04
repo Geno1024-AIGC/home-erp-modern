@@ -16,6 +16,7 @@
 | `meals` | 饮食与采购 | business | draft | 菜谱、菜单、采购清单 |
 | `health` | 健康与医疗 | business | draft | 人类健康记录、疫苗、用药、过敏 |
 | `pets` | 宠物与花鸟鱼虫 | business | draft | 宠物/植物档案、成员、护理记录 |
+| `smart_home` | 智能家居 | business | draft | 设备、绑定、状态、命令、场景、联动 |
 | `achievements` | 奖项与证书 | business | draft | 成员奖项、荣誉、证书、资格 |
 | `identity` | 证件与卡片 | business | draft | 成员证件、通行证、社保卡、银行卡 |
 | `assets` | 资产 | deferred | — | 暂并入 `inventory.kind=durable`，后续再评估拆分 |
@@ -43,7 +44,14 @@ flowchart LR
     Pets["pets<br/>宠物与花鸟鱼虫"]
     Pets --> Members
     Pets --> Locations
-    Documents["documents<br/>文档 / 说明书"] --> Inventory
+    Documents["documents<br/>文档 / 说明书"]
+    SmartHome["smart_home<br/>智能家居"]
+    SmartHome --> Locations
+    SmartHome --> Members
+    SmartHome --> Inventory
+    Documents --> SmartHome
+    Tasks --> SmartHome
+    Documents --> Inventory
     Documents --> Calendar
     Documents --> Meals
     Documents --> Health
@@ -73,6 +81,7 @@ flowchart LR
 | `meals` | `m_meals_recipe`、`m_meals_recipe_ingredient`、`m_meals_plan`、`m_meals_grocery_item` | `inventory_item_id`、`recipe_id` |
 | `health` | `m_health_record` | `member_id` |
 | `pets` | `m_pets_pet`、`m_pets_member`、`m_pets_care_log` | `member_id`、`location_id` |
+| `smart_home` | `m_smart_home_adapter`、`m_smart_home_device`、`m_smart_home_binding`、`m_smart_home_state`、`m_smart_home_command`、`m_smart_home_event`、`m_smart_home_scene`、`m_smart_home_automation` | `location_id`、`member_id`、`inventory_item_id` |
 | `achievements` | `m_achievements_record` | `member_id` |
 | `identity` | `m_identity_record` | `member_id` |
 | `members` | 人员与家庭关系 | 无 |
@@ -89,6 +98,9 @@ flowchart LR
 - 菜谱、菜单、采购清单由 `meals` 拥有；库存数量仍由 `inventory` 拥有，采购任务仍由 `tasks` 拥有。
 - 人类健康记录由 `health` 拥有；默认私密，预约归 `calendar`，提醒归 `tasks`，报告归 `documents`。
 - 宠物/植物档案与护理记录由 `pets` 拥有；护理提醒归 `tasks`，食物/药品库存归 `inventory`，宠物医疗不混入 `health`。
+- 智能设备、绑定、状态、命令、场景与联动由 `smart_home` 拥有；物理资产/保修归 `inventory`，房间归 `locations`，说明书归 `documents`。
+- 智能家居的设备类型是 `DeviceProfile`，操作是 `Capability`，协议是 `ProtocolDriver`；核心不写厂商分支。
+- 门锁 v1 只读，不注册 `unlock`；高风险命令不依赖 UI 隐藏，由策略层拦截。
 - 奖项/证书记录由 `achievements` 拥有；证书扫描件与关联由 `documents` 拥有。
 - 证件/卡片记录由 `identity` 拥有；只存掩码/后四位，完整信息看扫描件。
 - 水印分享由 `documents` 生成；`identity` 只提供入口与上下文，不复制文件。
@@ -119,3 +131,8 @@ flowchart LR
 - 健康预约/提醒是否允许从健康模块直接创建，还是只跳转。
 - 宠物是否需要物种专属字段与独立医疗模块。
 - 植物护理是否需要季节模板，还是继续用 `tasks` 周期任务。
+- 智能家居 v1 是否开放用户自定义 Profile，还是只允许模块内置 Profile。
+- 简单联动是否足够，还是需要完整规则引擎；v1 先单触发器 + 条件 + 动作。
+- 多绑定状态冲突如何合并；v1 只启用主绑定。
+- 蓝牙音频是否由宿主统一音频服务提供，还是拆独立模块。
+- 智能家居驱动是否允许携带原生库；BLE/串口驱动可能需要。

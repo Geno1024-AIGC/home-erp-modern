@@ -49,8 +49,9 @@
 | `meals` | 饮食与采购 | business | draft | `inventory`（可选）、`tasks`（可选）、`calendar`（可选）、`documents`（可选） | [meals.md](meals.md) |
 | `health` | 健康与医疗 | business | draft | `members`、`documents`（可选）、`calendar`（可选）、`tasks`（可选） | [health.md](health.md) |
 | `pets` | 宠物与花鸟鱼虫 | business | draft | `members`、`locations`（可选）、`documents`（可选）、`tasks`（可选） | [pets.md](pets.md) |
+| `smart_home` | 智能家居 | business | draft | `locations`（可选）、`members`（可选）、`inventory`（可选）、`documents`（可选）、`tasks`（可选） | [smart_home.md](smart_home.md) |
 | `achievements` | 奖项与证书 | business | draft | `members`、`documents`（可选）、`tasks`（可选） | [achievements.md](achievements.md) |
 | `identity` | 证件与卡片 | business | draft | `members`、`documents`（可选）、`tasks`（可选） | [identity.md](identity.md) |
 | `assets` | 资产 | deferred | — | — | 先并入 `inventory` |
 
-当前已写：`locations`、`inventory`、`documents`、`tasks`、`calendar`、`meals`、`health`、`pets`、`achievements`、`identity`。其余模块等进入路线图时再写。
+当前已写：`locations`、`inventory`、`documents`、`tasks`、`calendar`、`meals`、`health`、`pets`、`smart_home`、`achievements`、`identity`。其余模块等进入路线图时再写。

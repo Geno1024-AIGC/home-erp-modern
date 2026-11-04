@@ -181,8 +181,9 @@
 7. `meals`（饮食与采购：菜谱、周菜单、采购清单）
 8. `health`（健康与医疗：就诊、疫苗、用药、过敏；默认私密）
 9. `pets`（宠物与花鸟鱼虫：猫狗鸟鱼虫植物、护理记录）
+10. `smart_home`（智能家居：设备/能力/协议驱动、状态、命令、场景、简单联动）
 
-`assets` 暂缓，v1 由 `inventory.kind=durable` 覆盖。`identity` 实施前先定敏感字段与审计策略；`health` 实施前先定隐私、审计与加密策略。
+`assets` 暂缓，v1 由 `inventory.kind=durable` 覆盖。`identity` 实施前先定敏感字段与审计策略；`health` 实施前先定隐私、审计与加密策略。`smart_home` 实施前先定驱动 SPI、Profile/Capability 注册表与高风险命令策略；v1 门锁只读，不做远程开锁、摄像头与麦克风。
 
 每个模块：
 

@@ -18,6 +18,7 @@ CommandDispatcher 统一调度：校验、策略、路由、状态、审计
 - **协议**加 Driver 模块，不改核心业务。
 - **UI**用通用能力渲染器，不写厂商分支。
 - 红外码、设备型号、按钮布局是数据；协议实现是代码。
+- 核心表、RPC、Capability、Profile ID 不写死厂商或型号；具体设备/型号只出现在驱动配置或 Profile 数据中。
 
 ## 2. DeviceProfile
 
@@ -99,7 +100,7 @@ data class CommandDescriptor(
 
 ```kotlin
 interface SmartHomeDriver {
-    val id: String                    // "ir.gree", "homekit", "xiaomi.miot"
+    val id: String                    // "ir", "homekit", "vendor.cloud"
     val apiVersion: Int
 
     suspend fun start(ctx: DriverContext)
@@ -121,8 +122,8 @@ interface DeviceSession {
 
 Driver 支持两种形态：
 
-- **点对点**：一个 ESP32 红外节点、一个 BLE 设备。
-- **网关型**：Home Assistant、Zigbee 网关、米家云；一个连接下挂多个设备。
+- **点对点**：一个红外节点或一个 BLE 设备。
+- **网关型**：第三方网关、厂商云；一个连接下挂多个设备。
 
 因此核心使用 `AdapterInstance` + `DeviceBinding`：
 
@@ -229,7 +230,7 @@ data class StateValue(
 | 想新增 | 扩展点 | 需要改核心？ |
 |---|---|---|
 | 新设备类型，能力已存在 | 新 `DeviceProfile` | 不用 |
-| 新格力空调型号 | 新红外码 + Profile 数据 | 不用 |
+| 新空调型号 | 新红外码 + Profile 数据 | 不用 |
 | 已有能力的新命令 | Capability 增加命令 + schema | 少量 |
 | 全新通用能力 | 核心 Capability 注册表 | 要 |
 | 厂商私有能力 | 命名空间化 Capability | 不用改核心，但自动化只做通用展示 |

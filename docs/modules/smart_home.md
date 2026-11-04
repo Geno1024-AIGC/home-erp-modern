@@ -18,9 +18,9 @@
 
 ## 2. 用户场景
 
-- 每个房间一个红外节点，控制格力空调：开关、温度、模式、风速。
+- 每个房间一个红外节点，控制红外空调：开关、温度、模式、风速。
 - 门锁只读：开/关状态、电量、开门事件；不做远程开锁。
-- 小爱音箱作为蓝牙音频输出/通知设备。
+- 蓝牙音箱作为音频输出/通知设备。
 - 发现局域网设备，确认后加入家庭；未确认设备只显示为候选。
 - 新增一种灯或传感器：组合已有能力，不写新代码。
 - 新增一个协议：安装驱动，不改 `smart_home` 核心。
@@ -57,14 +57,15 @@
 
 `category` 只用于 UI 分组（`light`、`climate`、`lock`、`media`、`sensor`、`switch`、`other`），不决定行为。行为来自 `Capability`。
 
-v1 参考 Profile：`climate.ir_ac`、`lock.readonly`、`media_player.speaker`、`sensor.basic`。v1 参考 Driver：`ir.gree`、`homekit`、`xiaomi.miot`（可选）、`esp32.ir`。
+v1 参考 Profile：`climate.ir_ac`、`lock.readonly`、`media_player.speaker`、`sensor.basic`。v1 参考 Driver：`ir`、`homekit`、`vendor.cloud`（可选）、`ir.gateway`。
 
 规则：
 
 - 设备类型是 Profile，不是 Kotlin 类；新类型优先用已有能力组合。
 - 操作是 Capability 的命令，不新增 `device.turnOn` 这类 RPC。
 - 协议是 Driver；核心不出现厂商分支、协议 enum 或厂商字段。
-- 一个设备可有一条主绑定和零条备用绑定；Home Assistant/网关型驱动可以作为多个设备的适配器实例。
+- 核心表、RPC、Capability、Profile ID 不写死厂商或型号；具体设备/型号只出现在驱动配置或 Profile 数据中。
+- 一个设备可有一条主绑定和零条备用绑定；网关型驱动可以作为多个设备的适配器实例。
 - `state.source`：`reported`（设备上报）、`inferred`（红外等推断）、`optimistic`（命令后临时状态）。
 - 命令结果不等于真实状态；以 `DeviceState` 为准。
 - 红外没有回传，状态必须标记 `inferred`；UI 显示“最后发送”。
@@ -231,7 +232,7 @@ CREATE TABLE m_smart_home_automation (
 ## 9. 验收
 
 - 新增一个已有能力组合的设备类型，只加 Profile 即可显示与控制。
-- 新增格力空调型号，只换红外码/Profile，不改核心。
+- 新增空调型号，只换红外码/Profile，不改核心。
 - 新增一个协议驱动，不修改 `smart_home` 的命令与 UI 代码。
 - 发现设备→确认→配对→设备出现；未确认设备不进入受管列表。
 - 门锁只显示状态/电量/事件，不存在 `unlock` 命令。

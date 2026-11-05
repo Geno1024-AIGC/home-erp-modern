@@ -155,6 +155,7 @@ interface SatelliteContext {
 - 模块可以读取自己的 assets；不能读取其他模块或宿主私有文件。
 - 模块不能注册 Android `Activity`/`Service`/`Receiver`/`Provider`，不能携带 Android 资源或原生库（v1）。
 - 平台能力通过 `Capabilities` 由宿主实现：扫码、相机、文件选择、通知、分享、生物识别。
+- 相机/扫码按次授权；相机帧只在设备本地解码，不上传、不落盘、不后台采集。
 
 ### 3.1 导航与贡献点
 

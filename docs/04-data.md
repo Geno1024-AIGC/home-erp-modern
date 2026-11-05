@@ -58,9 +58,9 @@ interface Db {
 interface FileStore {
     fun put(stream: InputStream, expectedSha256: String? = null): FileRef
     fun open(ref: FileRef): InputStream
-    fun addRef(conn: Connection, ref: FileRef, ownerType: String, ownerId: String)
-    fun removeRef(conn: Connection, ref: FileRef, ownerType: String, ownerId: String)
-    fun gc(): GcResult              // 清理无引用且超过安全窗口的文件
+    fun addRef(conn: Connection, ref: FileRef, ownerType: String, ownerId: String, role: String = "attachment")
+    fun removeRef(conn: Connection, ref: FileRef, ownerType: String, ownerId: String, role: String = "attachment")
+    fun gc(dryRun: Boolean = false): GcResult   // 两阶段清理无引用且超过安全窗口的文件
 }
 ```
 
@@ -141,7 +141,7 @@ CREATE TABLE schema_migrations (
 
 - 默认硬删除；需要同步/审计的模块用 `deleted_at` 软删除。
 - 软删除的表必须有部分索引或查询约束，避免遗漏过滤。
-- 附件引用计数随业务记录事务更新。
+- 附件引用行随业务记录事务增删；不维护单独的计数器，引用数按 `file_refs` 统计。
 
 ### Web 会话表（宿主）
 
@@ -184,29 +184,52 @@ files/sha256/<前2位>/<次2位>/<完整 sha256>
 
 ```sql
 CREATE TABLE file_refs (
-  sha256     TEXT NOT NULL,
-  owner_type TEXT NOT NULL,   -- module id
-  owner_id   TEXT NOT NULL,   -- 业务实体 id
-  created_at INTEGER NOT NULL,
-  PRIMARY KEY (sha256, owner_type, owner_id)
+  id          TEXT PRIMARY KEY,                 -- 引用 id，一次引用一行
+  sha256      TEXT NOT NULL,
+  owner_type  TEXT NOT NULL,                    -- "<module>.<entity>"，如 documents.document
+  owner_id    TEXT NOT NULL,                    -- 业务实体主键
+  role        TEXT NOT NULL DEFAULT 'attachment',
+  created_at  INTEGER NOT NULL,
+  UNIQUE (sha256, owner_type, owner_id, role)
 );
+CREATE INDEX idx_file_refs_sha ON file_refs(sha256);
+CREATE INDEX idx_file_refs_owner ON file_refs(owner_type, owner_id);
 ```
 
-- 删除引用后，后台 GC 清理无引用文件。
-- GC 只删除「无引用且写入超过 24 小时」的文件，避免误删「文件已落盘、事务尚未提交」的窗口。
-- 卸载模块并选择「删除数据」时，先删除该模块的 `file_refs`，再触发 GC。
+引用规则：
+
+- 一个文件可以被多条业务记录引用；同一实体同一 `role` 只建一条引用，重复上传幂等。
+- `owner_type` 用 `<module>.<entity>`，不是模块 ID；`owner_id` 是该实体的主键。
+- 只有**真正持有文件**的实体建引用。`documents.link` 把文档关联到 `meals.cook_log` 只是业务关联，不新增 `file_refs`；文件引用始终属于 `documents.document`。
+- 引用行与业务记录在同一事务增删；软删除/归档不删引用，恢复后文件仍可用。
+- 不维护引用计数器：引用数 = `COUNT(*) WHERE sha256 = ?`，避免计数漂移。
+- 删除业务记录时必须在同一事务删除其引用；漏删由 GC 的孤儿引用检查兜底，但不能长期依赖。
+
+### 6.2 GC（两阶段）
+
+1. **标记候选**：磁盘上存在、但 `file_refs` 中无对应 `sha256`，且文件写入时间超过 24 小时的文件；同时报告 `file_refs` 中指向不存在文件的行。
+2. **延迟删除**：候选至少再保留 24 小时（或等到下一次 GC），第二次扫描仍无引用才物理删除；每轮有数量上限、可 dry-run、写审计。指向缺失文件的引用行连续两轮仍缺失才清理，避免恢复窗口误删。
+
+边界：
+
+- 写入顺序是先落盘再建引用，「已落盘、事务未提交」的文件在 24 小时宽限期内不会被删。
+- 宽限期必须大于最长事务与备份恢复耗时；恢复备份后先跑一次引用校验，再允许 GC。
+- GC 与备份/恢复互斥；GC 运行期间不开始新的备份或恢复。
+- GC 只认 `file_refs`，不遍历业务表猜测引用关系；有引用的文件永不删除。
+- 卸载模块并选择「删除数据」时，先删除该模块前缀的引用（`owner_type` 以 `<module>.` 开头），再触发 GC；不影响其他模块。
 - 文件权限 `0600`；目录 `0700`。
 
-### 6.2 模块使用
+### 6.3 模块使用
 
 ```kotlin
 val ref = ctx.files.put(input, expectedSha256 = req.sha256)
 ctx.db.write { conn ->
     insertAttachment(conn, itemId, ref)
-    ctx.files.addRef(conn, ref, ownerType = moduleId, ownerId = itemId)
+    ctx.files.addRef(conn, ref, ownerType = "documents.document", ownerId = documentId)
 }
 ```
 
+- `ownerType` 用 `<module>.<entity>`；`addRef` 对同一 `(sha256, ownerType, ownerId, role)` 幂等。
 - `FileRef` 只含相对 key、sha256、大小、MIME；不含绝对路径。
 - 禁止模块直接 `Files.write` 到 `data/files`。
 

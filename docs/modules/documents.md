@@ -55,7 +55,8 @@
 
 - 一份文档只有一个主文件；多页说明书用一个 PDF，不拆成多份。
 - 文档可关联多个实体（多对多）；同一物品可有多份文档（不同语言/版本）。
-- 删除关联不删文件；文件由 `FileStore` GC 回收。
+- 删除关联不删文件；文件引用由 `documents` 持有，删除文档时在同一事务删除该文档的 `file_refs`，再由 `FileStore` 两阶段 GC。
+- `documents.link` 到 `meals.cook_log` 等目标只是业务关联，不新增文件引用；引用始终属于 `documents.document`。
 - 归档文档保留关联；默认搜索不返回归档文档。
 - 文档版本用 `revision` 文本，不做自动版本链；需要历史时上传新文档并归档旧文档。
 
@@ -140,7 +141,8 @@ CREATE INDEX idx_documents_link_target ON m_documents_link(target_type, target_i
 ```
 
 - `file_key` 由 `FileStore` 生成；`sha256` 用于校验与去重。
-- 关联表不建跨模块外键；目标删除后由调用方解除关联，后台清理孤儿。
+- 每条文档对应一条 `file_refs`（`owner_type="documents.document"`）；删除文档时同事务删引用。
+- 关联表不建跨模块外键；目标删除后由调用方解除关联，后台清理孤儿关联；关联不产生文件引用。
 - 迁移只向前；文件不进 DB。
 
 ## 9. 验收

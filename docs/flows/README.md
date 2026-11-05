@@ -23,3 +23,4 @@
 | 流程 | 涉及模块 | 状态 |
 |---|---|---|
 | [新增电器并归档说明书](appliance-manual.md) | `inventory`、`documents`、`locations` | draft |
+| [记录一顿饭并附照片](cook-log.md) | `meals`、`documents` | draft |

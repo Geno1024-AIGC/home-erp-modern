@@ -78,7 +78,7 @@ flowchart LR
 | `documents` | `m_documents_doc`、`m_documents_link`、`files/` | `target_type` + `target_id` |
 | `tasks` | `m_tasks_template`、`m_tasks_occurrence`、`m_tasks_completion` | `assignee_id`、`subject_type` + `subject_id` |
 | `calendar` | `m_calendar_event`、`m_calendar_event_member` | `member_id`、`location_id` |
-| `meals` | `m_meals_recipe`、`m_meals_recipe_ingredient`、`m_meals_plan`、`m_meals_grocery_item` | `inventory_item_id`、`recipe_id` |
+| `meals` | `m_meals_recipe`、`m_meals_recipe_ingredient`、`m_meals_plan`、`m_meals_grocery_item`、`m_meals_cook_log`、`m_meals_cook_log_dish` | `inventory_item_id`、`recipe_id`、`meal_plan_id` |
 | `health` | `m_health_record` | `member_id` |
 | `pets` | `m_pets_pet`、`m_pets_member`、`m_pets_care_log` | `member_id`、`location_id` |
 | `smart_home` | `m_smart_home_adapter`、`m_smart_home_device`、`m_smart_home_binding`、`m_smart_home_state`、`m_smart_home_command`、`m_smart_home_event`、`m_smart_home_scene`、`m_smart_home_automation` | `location_id`、`member_id`、`inventory_item_id` |
@@ -95,7 +95,8 @@ flowchart LR
 - 说明书的文件与关联由 `documents` 拥有；`inventory` 只在详情页调用 `documents` RPC。
 - 任务完成记录由 `tasks` 拥有；不要在其他模块复制「已完成」状态。
 - 事件、纪念日、生日由 `calendar` 拥有；日历只读叠加 `tasks` 到期项，不复制任务。
-- 菜谱、菜单、采购清单由 `meals` 拥有；库存数量仍由 `inventory` 拥有，采购任务仍由 `tasks` 拥有。
+- 菜谱、菜单、采购清单和做饭记录由 `meals` 拥有；库存数量仍由 `inventory` 拥有，采购任务仍由 `tasks` 拥有。
+- 做饭记录记录实际发生的烹饪，照片归 `documents`；不自动扣库存、不自动完成任务。
 - 人类健康记录由 `health` 拥有；默认私密，预约归 `calendar`，提醒归 `tasks`，报告归 `documents`。
 - 宠物/植物档案与护理记录由 `pets` 拥有；护理提醒归 `tasks`，食物/药品库存归 `inventory`，宠物医疗不混入 `health`。
 - 智能设备、绑定、状态、命令、场景与联动由 `smart_home` 拥有；物理资产/保修归 `inventory`，房间归 `locations`，说明书归 `documents`。
@@ -111,6 +112,7 @@ flowchart LR
 跨 2 个以上模块的流程放 [flows/](flows/)，不要塞进某个模块卡。当前示例：
 
 - [appliance-manual.md](flows/appliance-manual.md)：新增电器并归档说明书。
+- [cook-log.md](flows/cook-log.md)：记录一顿饭并附照片。
 
 ## 5. 待确认
 
@@ -127,6 +129,7 @@ flowchart LR
 - 日历中的任务叠加是否允许直接改期，还是只读。
 - 菜单计划是否显示在日历主视图；v1 先留在 `meals`。
 - 采购清单是否与库存的购物清单合并；v1 由 `meals` 独占。
+- 做饭记录是否要按顿/按菜拆分，以及是否记录剩菜与浪费；v1 按顿 + 多菜品。
 - 健康记录是否需要字段级加密、更细的成员 ACL、管理员破窗。
 - 健康预约/提醒是否允许从健康模块直接创建，还是只跳转。
 - 宠物是否需要物种专属字段与独立医疗模块。

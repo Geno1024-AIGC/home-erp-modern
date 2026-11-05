@@ -4,7 +4,7 @@
 
 ## 1. 目的与非目标
 
-**目的**：保存家里的文件与元数据，并关联到物品、位置、任务、日历事件、奖项/证书、证件/卡片等实体。典型场景是电器说明书，也包括保修卡、发票、奖状照片、证书扫描件、身份证/银行卡扫描件、邀请函/门票；支持按需生成带水印的分享副本。
+**目的**：保存家里的文件与元数据，并关联到物品、位置、任务、日历事件、菜谱、做饭记录、奖项/证书、证件/卡片等实体。典型场景是电器说明书，也包括保修卡、发票、奖状照片、证书扫描件、身份证/银行卡扫描件、邀请函/门票、做饭成品照片；支持按需生成带水印的分享副本。
 
 **非目标**：
 
@@ -23,6 +23,7 @@
 - 把身份证/银行卡扫描件加水印后发给银行、学校或租房中介。
 - 给旅行/活动事件附邀请函、门票、行程单。
 - 给菜谱附成品照片。
+- 给做饭记录附成品照片、餐桌照或过程图。
 - 给健康记录附检查报告、处方、疫苗记录。
 - 给宠物/植物附照片、疫苗本、宠物病历。
 - 归档旧文件，但保留关联历史。
@@ -46,9 +47,9 @@
 
 `kind`：`manual`、`receipt`、`warranty`、`photo`、`other`。
 
-`target_type`：`inventory.item`、`locations.node`、`tasks.task`、`calendar.event`、`meals.recipe`、`health.record`、`pets.pet`、`pets.care_log`、`achievements.record`、`identity.record`。
+`target_type`：`inventory.item`、`locations.node`、`tasks.task`、`calendar.event`、`meals.recipe`、`meals.cook_log`、`health.record`、`pets.pet`、`pets.care_log`、`achievements.record`、`identity.record`。
 
-`role`：`manual`、`photo`、`receipt`、`warranty`、`certificate`、`evidence`、`id_scan`、`card_scan`、`medical_report`、`prescription`、`lab_result`、`vaccination_record`、`imaging`、`pet_photo`、`vet_report`、`attachment`。
+`role`：`manual`、`photo`、`receipt`、`warranty`、`certificate`、`evidence`、`id_scan`、`card_scan`、`medical_report`、`prescription`、`lab_result`、`vaccination_record`、`imaging`、`pet_photo`、`vet_report`、`cook_result`、`attachment`。
 
 规则：
 
@@ -148,6 +149,7 @@ CREATE INDEX idx_documents_link_target ON m_documents_link(target_type, target_i
 - 上传证书扫描件并关联到奖项/证书记录。
 - 上传身份证/银行卡扫描件并关联到证件/卡记录。
 - 上传邀请函/门票并关联到日历事件。
+- 上传做饭成品照片并关联到做饭记录。
 - 上传检查报告/处方并关联到健康记录。
 - 上传宠物照片/疫苗本并关联到宠物或护理记录。
 - 同一文档关联多个物品；同一物品多份文档。

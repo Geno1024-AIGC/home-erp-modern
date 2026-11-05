@@ -74,7 +74,7 @@ flowchart LR
 | 模块 | 拥有的表/文件 | 只引用 |
 |---|---|---|
 | `locations` | `m_locations_node`（多 Level 0 根） | 无 |
-| `inventory` | `m_inventory_item`、`m_inventory_lot`、`m_inventory_movement`、`m_inventory_barcode`、`m_inventory_catalog_cache` | `location_id` |
+| `inventory` | `m_inventory_item`、`m_inventory_lot`、`m_inventory_movement`、`m_inventory_barcode`、`m_inventory_catalog_cache`、`m_inventory_price`、`m_inventory_merchant` | `location_id` |
 | `documents` | `m_documents_doc`、`m_documents_link`、`files/` | `target_type` + `target_id` |
 | `tasks` | `m_tasks_template`、`m_tasks_occurrence`、`m_tasks_completion` | `assignee_id`、`subject_type` + `subject_id` |
 | `calendar` | `m_calendar_event`、`m_calendar_event_member` | `member_id`、`location_id` |
@@ -94,6 +94,7 @@ flowchart LR
 - 位置森林允许多个 Level 0 地点（自己家、老家、工作地、伴侣住处）；根之间平级。
 - 说明书的文件与关联由 `documents` 拥有；`inventory` 只在详情页调用 `documents` RPC。
 - 条码↔物品映射由 `inventory` 拥有；扫码解码在客户端，恒星不接收相机帧；外部商品库查询必须显式触发。
+- 价格观测与商家由 `inventory` 拥有；价格只追加，图表只读；库存数量与价格历史解耦。
 - 任务完成记录由 `tasks` 拥有；不要在其他模块复制「已完成」状态。
 - 事件、纪念日、生日由 `calendar` 拥有；日历只读叠加 `tasks` 到期项，不复制任务。
 - 菜谱、菜单、采购清单和做饭记录由 `meals` 拥有；库存数量仍由 `inventory` 拥有，采购任务仍由 `tasks` 拥有。
@@ -121,6 +122,9 @@ flowchart LR
 - `inventory` 与 `assets` 是否最终拆分；v1 先按 `inventory.kind=durable` 处理。
 - 位置移动历史归 `locations` 还是 `inventory`；当前倾向由 `inventory` 的库存流水记录。
 - 条码是否需要独立商品主数据，让同一商品对应多个库存条目；v1 用 `Item` 兼作商品与库存。
+- 价格历史长期留在 `inventory`，还是拆独立 `prices` / `shopping` 模块；当前先留在 `inventory`。
+- 是否接小票 OCR / 电商订单导入价格；当前只做手动与入库。
+- 是否需要价格提醒、预算与跨币种换算；当前不做。
 - 外部商品库 Provider 是内置配置还是签名 `.hmod`；v1 先留 SPI 与可关闭的内置配置。
 - 称重商品的内嵌价格条码是否解析；v1 归入 `other`，不读价格。
 - 说明书是否做 OCR/全文搜索；v1 先按标题、类型、语言、关联实体搜索。

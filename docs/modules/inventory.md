@@ -4,7 +4,7 @@
 
 ## 1. 目的与非目标
 
-**目的**：记录家里的物品与库存：消耗品数量、保质期、出入库；耐用品型号、序列号、保修信息；支持扫商品条码快速录入与补货。
+**目的**：记录家里的物品与库存：消耗品数量、保质期、出入库；耐用品型号、序列号、保修信息；支持扫商品条码快速录入与补货；价格历史与趋势见 [inventory/pricing.md](inventory/pricing.md)。
 
 **非目标**：
 
@@ -14,6 +14,7 @@
 - 不存条码图片、相机帧或商品图；照片归 `documents`。
 - 不建全局商品主数据；条码↔物品映射只在当前家庭内有效。
 - 不自动从外部商品库创建物品；查询结果只作草稿，必须由用户确认。
+- v1 不做自动抓价、比价、价格预测、预算与汇率换算；价格历史设计见 [inventory/pricing.md](inventory/pricing.md)。
 
 ## 2. 用户场景
 
@@ -27,6 +28,8 @@
 - 批量扫一箱/一柜物品，逐个确认数量与位置后入库。
 - 同一商品的不同包装各有条码，都指向同一物品；扫到归档物品时提示恢复，不静默复用。
 - 可选：显式调用外部商品库补全名称、品牌、规格；结果可改，不联网也能继续。
+- 补货时顺手记录实付价；在超市看到货架价也可单独记一条。
+- 在物品详情看价格折线图：最新、最低、最高、平均与涨跌幅；按商家/促销过滤。
 
 ## 3. 边界与依赖
 
@@ -40,6 +43,8 @@
 - 外部商品库查询是可选的 Provider；默认关闭或需显式触发，失败不阻塞录入。
 - 二维码按不透明字符串处理，不自动打开链接、不执行动作。
 - 不下载、不热链外部商品图；用户可自己拍照并归 `documents`。
+- 价格观测与商家主数据归 `inventory`；价格只追加，不静默改价；图表只读。
+- 价格不自动抓取、不跨币种换算；小票/货架照片归 `documents`。
 
 ## 4. 领域模型
 
@@ -50,6 +55,8 @@
 | `StockMovement` | `id`、`item_id`、`lot_id`、`delta`、`reason`、`actor_id`、`at` |
 | `ItemBarcode` | `id`、`item_id`、`code`、`raw_code`、`code_type`、`pack_quantity`、`pack_unit`、`source`、`verified_at`、`archived_at` |
 | `CatalogCache` | `code`、`provider_id`、`payload_json`、`fetched_at`、`expires_at` |
+| `Merchant` | `id`、`name`、`kind`、`location_id`、`archived_at` |
+| `PriceObservation` | `id`、`item_id`、`observed_at`、`total_price_cents`、`currency`、`quantity`、`net_amount`、`net_unit`、`unit_price_micros`、`kind`、`merchant_id`、`voided_at` |
 
 `Item.kind`：`consumable`（消耗品，按批次管理数量/保质期）、`durable`（耐用品，通常数量 1，重型号/序列号/保修）。
 
@@ -72,6 +79,9 @@
 - 外部查询结果不可信：只用于预填，用户确认后才写物品字段；不自动创建。
 - 外部查询缓存默认 30 天；禁用 Provider 时清空；缓存不含凭证。
 - 二维码内容不解析为 URL；超长或含控制字符的码拒绝。
+- 价格观测只追加；作废用 `voided_at`，纠正用新记录；入库带价格时同事务写一条 `purchase` 观测。
+- 单位价格按 `total_price_cents / (quantity × net_amount)` 归一化；只比较同币种、同基础单位的数据。
+- 价格统计、图表口径与字段详见 [inventory/pricing.md](inventory/pricing.md)。
 
 ## 5. 权限
 
@@ -90,17 +100,20 @@
 - `inventory.items.create`：可带 `barcodes`，物品与条码同事务创建。
 - `inventory.items.update`
 - `inventory.items.archive` / `inventory.items.restore`
-- `inventory.stock.adjust`：`{ itemId, lotId?, delta, reason }`。
+- `inventory.stock.adjust`：`{ itemId, lotId?, delta, reason, price? }`；入库带价格时同事务写一条 `purchase` 价格观测。
 - `inventory.barcodes.resolve`：批量解析 `{ codes: [{ code, codeType? }] }`；服务端校验 GTIN、归一化并查本地映射，返回匹配、未知、非法码；不访问外网。
 - `inventory.barcodes.link`：`{ itemId, code, codeType?, packQuantity?, packUnit? }`。
 - `inventory.barcodes.unlink`
 - `inventory.barcodes.listForItem`
 - `inventory.catalog.lookup`：显式查询外部商品库，返回可编辑草稿；不落物品表。
 - `inventory.catalog.providers.list`：查看可用 Provider 与启用状态。
+- `inventory.prices.record` / `list` / `series` / `stats` / `void`：价格记录、原始列表、时间桶、统计与作废；口径见 [inventory/pricing.md](inventory/pricing.md)。
+- `inventory.merchants.list` / `create` / `update` / `archive`：家庭内商家主数据。
 - `inventory.items.listByLocation`：供 `locations` 详情页调用。
 - 事件：
   - `inventory.item.changed { id, action }`
   - `inventory.barcode.changed { itemId, action }`
+  - `inventory.price.changed { itemId, priceId, action }`
   - `inventory.stock.low { itemId, remaining }`
   - `inventory.stock.expiring { itemId, lotId, expiresAt }`
 
@@ -142,6 +155,7 @@ data class ProductDraft(
 - 扫码后：已知 → 打开物品/补货；未知 → 新建物品并预填条码；归档 → 提示恢复；非法 → 说明原因。
 - 批量扫码时逐条确认数量、位置、保质期；部分失败逐条提示，不做跨物品事务。
 - 物品详情显示已绑定条码，可添加/解绑；显示 `code_type` 与包装规格。
+- 物品详情「价格」页（后续）：最新/最低/最高/平均、涨跌幅、折线图、商家过滤、促销标记；支持表格视图。
 - 外部商品库查询必须由用户点按；展示 Provider 与数据外发说明；结果可编辑，图片不自动加载。
 - Web：固定壳中的列表/详情/编辑、出入库表单；手动输入，浏览器支持时可用扫码能力；需 HTTPS 与相机授权。
 - Web 不做批量导入；批量扫码 v1 以原生为主。
@@ -227,6 +241,7 @@ CREATE TABLE m_inventory_catalog_cache (
 - 金额用最小货币单位 + 币种；v1 可不填。
 - 条码唯一性只约束活跃映射；归档映射保留用于历史与「恢复」提示。
 - `catalog_cache` 只存查询结果，不存凭证；过期或禁用 Provider 后可清理。
+- 价格表 `m_inventory_merchant`、`m_inventory_price` 与回填策略见 [inventory/pricing.md](inventory/pricing.md)；本卡不重复 DDL。
 - 迁移只向前；删除物品默认归档，不物理删除流水。
 
 ## 9. 验收
@@ -244,10 +259,12 @@ CREATE TABLE m_inventory_catalog_cache (
 - 离线时本地解析可用；外部查询失败不阻塞创建或入库。
 - 相机帧、条码图片不上传、不落盘；审计与日志不记录完整条码内容。
 - Web 无扫码能力时可用手动输入；相机不可用时不影响其他功能。
+- 价格历史（后续）：入库带价格自动生成观测；单位价可比较不同包装；不同币种/单位不混算；图表不插值。
 
 ## 10. 开放问题
 
 - `assets` 何时拆分：出现维护计划、保修理赔、折旧等独立流程时。
+- 价格历史长期留在 `inventory`，还是拆独立 `prices` / `shopping` 模块；当前先留在 `inventory`。
 - 是否需要独立的商品主数据表，让同一商品对应多个库存条目；v1 用 `Item` 兼作商品与库存。
 - 外部商品库 Provider 用内置 HTTP 配置还是签名 `.hmod`；v1 先留 SPI，内置一个可关闭的配置项。
 - 是否支持称重商品的内嵌价格条码；v1 归入 `other`，不解析价格。

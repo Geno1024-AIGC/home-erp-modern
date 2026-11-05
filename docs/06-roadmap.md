@@ -185,6 +185,8 @@
 
 `assets` 暂缓，v1 由 `inventory.kind=durable` 覆盖。`identity` 实施前先定敏感字段与审计策略；`health` 实施前先定隐私、审计与加密策略。`smart_home` 实施前先定驱动 SPI、Profile/Capability 注册表与高风险命令策略；v1 门锁只读，不做远程开锁、摄像头与麦克风。
 
+后续增强：`inventory` 的价格历史与折线图（见 [modules/inventory/pricing.md](modules/inventory/pricing.md)）；v1 不做自动抓价、价格预测、提醒与预算。
+
 每个模块：
 
 - 服务端：迁移、RPC、权限、事件。

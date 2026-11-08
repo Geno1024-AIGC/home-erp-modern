@@ -18,6 +18,7 @@
 | `pets` | 宠物与花鸟鱼虫 | business | draft | 宠物/植物档案、成员、护理记录 |
 | `smart_home` | 智能家居 | business | draft | 设备、绑定、状态、命令、场景、联动 |
 | `messages` | 消息与公告 | business | draft | 公屏、私聊、聊天记录、主页公告 |
+| `travel` | 旅行 | business | draft | 旅行计划、目的地、同行人、逐日行程、清单、游记 |
 | `achievements` | 奖项与证书 | business | draft | 成员奖项、荣誉、证书、资格 |
 | `identity` | 证件与卡片 | business | draft | 成员证件、通行证、社保卡、银行卡 |
 | `assets` | 资产 | deferred | — | 暂并入 `inventory.kind=durable`，后续再评估拆分 |
@@ -62,6 +63,10 @@ flowchart LR
     Messages["messages<br/>消息与公告"]
     Messages --> Members
     Documents --> Messages
+    Travel["travel<br/>旅行"]
+    Travel --> Members
+    Documents --> Travel
+    Calendar --> Travel
     Achievements["achievements<br/>奖项与证书"]
     Documents --> Achievements
     Achievements --> Members
@@ -87,6 +92,7 @@ flowchart LR
 | `pets` | `m_pets_pet`、`m_pets_member`、`m_pets_care_log` | `member_id`、`location_id` |
 | `smart_home` | `m_smart_home_adapter`、`m_smart_home_device`、`m_smart_home_binding`、`m_smart_home_state`、`m_smart_home_command`、`m_smart_home_event`、`m_smart_home_scene`、`m_smart_home_automation` | `location_id`、`member_id`、`inventory_item_id` |
 | `messages` | `m_messages_conversation`、`m_messages_conversation_member`、`m_messages_message`、`m_messages_read`、`m_messages_announcement`、`m_messages_announcement_dismissal` | `member_id` |
+| `travel` | `m_travel_trip`、`m_travel_destination`、`m_travel_traveler`、`m_travel_day`、`m_travel_item`、`m_travel_checklist_item`、`m_travel_journal` | `member_id` |
 | `achievements` | `m_achievements_record` | `member_id` |
 | `identity` | `m_identity_record` | `member_id` |
 | `members` | 人员与家庭关系 | 无 |
@@ -112,6 +118,9 @@ flowchart LR
 - 公屏、私聊、聊天记录与主页公告由 `messages` 拥有；私聊仅参与者可见，管理员没有读取入口。
 - 公告归 `messages`，不复制成日历事件或任务；主页横幅只读展示生效中的公告。
 - Web 只提供公屏与公告；私聊仅原生，避免行星看到 Web 明文。
+- 旅行计划、行程、清单与游记由 `travel` 拥有；日历只读叠加旅行日期，不复制行程或事件。
+- 旅行准备任务归 `tasks`，票据/照片归 `documents`，证件号码归 `identity`；`travel` 只保存逻辑引用。
+- 旅行日期、住宿地址与游记会暴露家中无人；默认仅家庭成员可见，`guest` 无权限，日志/通知不记录具体地址与正文。
 - 奖项/证书记录由 `achievements` 拥有；证书扫描件与关联由 `documents` 拥有。
 - 证件/卡片记录由 `identity` 拥有；只存掩码/后四位，完整信息看扫描件。
 - 水印分享由 `documents` 生成；`identity` 只提供入口与上下文，不复制文件。
@@ -124,6 +133,7 @@ flowchart LR
 - [appliance-manual.md](flows/appliance-manual.md)：新增电器并归档说明书。
 - [barcode-intake.md](flows/barcode-intake.md)：扫码录入物品并入库。
 - [cook-log.md](flows/cook-log.md)：记录一顿饭并附照片。
+- [trip-planning.md](flows/trip-planning.md)：计划旅行、绑定票据与任务、回来后记录。
 
 ## 5. 待确认
 
@@ -161,3 +171,10 @@ flowchart LR
 - 聊天是否需要图片/文件、搜索、导出与保留期；v1 只做文本与基础历史。
 - 是否需要多个公屏/群组，还是只保留一个家庭公屏。
 - 公告是否需要定向、强制确认、定时推送；v1 只做时间窗与主页横幅。
+- 旅行是否需要私密/惊喜模式与更细的成员可见性；v1 家庭内全员可见。
+- 旅行是否提供 Web 只读行程页；v1 为隐私仅原生。
+- 是否需要旅行花费流水、分账与预算结算；v1 只存预算总额。
+- 是否需要离线行程包、离线地图与本地缓存；v1 只提供打印/导出。
+- 旅行是否接天气、航班状态、汇率等外部数据；v1 只手填。
+- 旅行票据是否做 OCR 与自动填充；v1 只上传附件。
+- 跨时区交通是否记录双时区与精确 UTC 时间；v1 用当地墙上时间。

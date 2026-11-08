@@ -4,7 +4,7 @@
 
 ## 1. 目的与非目标
 
-**目的**：保存家里的文件与元数据，并关联到物品、位置、任务、日历事件、菜谱、做饭记录、奖项/证书、证件/卡片等实体。典型场景是电器说明书，也包括保修卡、发票、奖状照片、证书扫描件、身份证/银行卡扫描件、邀请函/门票、做饭成品照片；支持按需生成带水印的分享副本。
+**目的**：保存家里的文件与元数据，并关联到物品、位置、任务、日历事件、菜谱、做饭记录、奖项/证书、证件/卡片、旅行等实体。典型场景是电器说明书，也包括保修卡、发票、奖状照片、证书扫描件、身份证/银行卡扫描件、邀请函/门票、做饭成品照片、旅行票据与游记照片；支持按需生成带水印的分享副本。
 
 **非目标**：
 
@@ -22,6 +22,8 @@
 - 在物品详情页直接打开说明书、保修卡、发票。
 - 把身份证/银行卡扫描件加水印后发给银行、学校或租房中介。
 - 给旅行/活动事件附邀请函、门票、行程单。
+- 给旅行附机票、酒店确认单、保险单与行程单。
+- 给旅行游记附照片，或选一张作为旅行封面。
 - 给菜谱附成品照片。
 - 给做饭记录附成品照片、餐桌照或过程图。
 - 给健康记录附检查报告、处方、疫苗记录。
@@ -45,11 +47,11 @@
 | `Document` | `id`、`title`、`kind`、`file_key`、`mime`、`size`、`sha256`、`language`、`revision`、`notes`、`created_by`、`archived_at` |
 | `DocumentLink` | `document_id`、`target_type`、`target_id`、`role`、`created_at` |
 
-`kind`：`manual`、`receipt`、`warranty`、`photo`、`other`。
+`kind`：`manual`、`receipt`、`warranty`、`photo`、`ticket`、`booking`、`itinerary`、`insurance`、`other`。
 
-`target_type`：`inventory.item`、`locations.node`、`tasks.task`、`calendar.event`、`meals.recipe`、`meals.cook_log`、`health.record`、`pets.pet`、`pets.care_log`、`achievements.record`、`identity.record`。
+`target_type`：`inventory.item`、`locations.node`、`tasks.task`、`calendar.event`、`meals.recipe`、`meals.cook_log`、`health.record`、`pets.pet`、`pets.care_log`、`achievements.record`、`identity.record`、`travel.trip`、`travel.journal_entry`。
 
-`role`：`manual`、`photo`、`receipt`、`warranty`、`certificate`、`evidence`、`id_scan`、`card_scan`、`medical_report`、`prescription`、`lab_result`、`vaccination_record`、`imaging`、`pet_photo`、`vet_report`、`cook_result`、`attachment`。
+`role`：`manual`、`photo`、`receipt`、`warranty`、`certificate`、`evidence`、`id_scan`、`card_scan`、`medical_report`、`prescription`、`lab_result`、`vaccination_record`、`imaging`、`pet_photo`、`vet_report`、`cook_result`、`ticket`、`booking`、`insurance`、`trip_photo`、`journal_photo`、`cover`、`attachment`。
 
 规则：
 
@@ -57,6 +59,8 @@
 - 文档可关联多个实体（多对多）；同一物品可有多份文档（不同语言/版本）。
 - 删除关联不删文件；文件引用由 `documents` 持有，删除文档时在同一事务删除该文档的 `file_refs`，再由 `FileStore` 两阶段 GC。
 - `documents.link` 到 `meals.cook_log` 等目标只是业务关联，不新增文件引用；引用始终属于 `documents.document`。
+- 旅行封面用 `role="cover"`；同一 `travel.trip` 最多一个 `cover`，切换封面时先解除旧关联。
+- 旅行票据/照片用 `role="ticket"`、`booking`、`insurance`、`trip_photo`、`journal_photo`；归档旅行不删文档，解除关联也不删文件。
 - 归档文档保留关联；默认搜索不返回归档文档。
 - 文档版本用 `revision` 文本，不做自动版本链；需要历史时上传新文档并归档旧文档。
 
@@ -104,6 +108,7 @@
 - Web：固定壳中的列表/详情/上传/下载；上传走 `/api/web/v1/upload`。
 - 原生文档详情提供「加水印分享」：填写接收方、用途、备注，下载生成副本。
 - Web 默认不显示证件水印入口；高敏感水印生成优先原生，后续可加重新认证。
+- 旅行关联文档在 Web 默认不显示旅行上下文与缩略图；机票、保险单等优先原生查看。
 - 物品详情显示 `documents.listFor(targetType=inventory.item, targetId=...)`。
 - 文档详情显示适用物品/位置；点击跳转到对应模块页面。
 - 缩略图后续再加；v1 用类型图标。
@@ -151,6 +156,7 @@ CREATE INDEX idx_documents_link_target ON m_documents_link(target_type, target_i
 - 上传证书扫描件并关联到奖项/证书记录。
 - 上传身份证/银行卡扫描件并关联到证件/卡记录。
 - 上传邀请函/门票并关联到日历事件。
+- 上传机票/酒店确认单/保险单并关联到旅行；游记照片关联到旅行游记，封面唯一。
 - 上传做饭成品照片并关联到做饭记录。
 - 上传检查报告/处方并关联到健康记录。
 - 上传宠物照片/疫苗本并关联到宠物或护理记录。
@@ -175,3 +181,4 @@ CREATE INDEX idx_documents_link_target ON m_documents_link(target_type, target_i
 - 水印样式（斜向平铺密度、透明度、页脚格式）是否需要用户可选。
 - 是否需要持久化分享记录表，以支持「我发过给谁」和撤销分享。
 - 是否需要一次性分享链接，而不是下载后自行发送。
+- 旅行票据是否做 OCR/行程解析；v1 只上传附件并手动填写。

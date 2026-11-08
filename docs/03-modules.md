@@ -179,6 +179,7 @@ interface SatelliteContext {
 
 - Web 壳由宿主提供，源码在 `satellite/web/`，构建产物打进恒星。
 - 壳内置固定页面：登录、仪表盘、库存、任务、文档、资产、智能家居、消息、设置/会话/模块管理。
+- `travel` v1 不提供 Web 页面；日历 Web 也不显示旅行叠加，避免行程与住址经行星明文暴露。
 - 页面通过 `/api/web/v1/rpc` 调用与原生相同的 RPC；不加载 `.hmod`。
 - 动态模块没有 Web UI；Web 的模块管理页只能查看/启用/禁用，不能渲染模块自定义页面。
 - 壳是普通 TypeScript + HTML/CSS，无框架、零运行时依赖；用户内容必须用 `textContent` 或严格转义。

@@ -21,6 +21,7 @@
 - 完成后记录谁、何时、备注；家务记录不可篡改。
 - 查看今天/本周待办与已完成历史。
 - 跳过本次任务并填写原因。
+- 出发前订酒店、检查护照；离家期间给花浇水；任务可关联到旅行，但不复制行程。
 
 ## 3. 边界与依赖
 
@@ -30,6 +31,7 @@
 - 完成照片归 `documents`；`tasks` 只存文档 ID 或通过 `documents.link` 关联。
 - 日历只读叠加任务到期项；任务状态、改期、完成仍由 `tasks` 拥有。
 - 宠物护理计划由 `tasks` 建模板，`subject_type` 可指向 `pets.pet`。
+- 旅行准备任务由 `tasks` 建模板/实例，`subject_type` 可指向 `travel.trip`；行程、清单与游记仍由 `travel` 拥有；未安装 `travel` 时退化为普通任务。
 - 提醒/通知由通知能力负责（后续）；`tasks` 只产生事件。
 
 ## 4. 领域模型
@@ -80,6 +82,7 @@
 - 原生：今天/本周/全部、任务详情、完成/跳过、历史；支持通知入口（后续）。
 - Web：固定壳中的列表、详情、完成/跳过；不做拖拽日历（后续）。
 - 物品/位置详情显示关联任务：`tasks.listFor`。
+- 旅行详情显示关联任务：`tasks.listFor(subjectType="travel.trip", subjectId=tripId)`；完成状态不同步到行程。
 - 完成表单可附照片；照片通过 `documents` 上传并关联，不在 `tasks` 存文件。
 
 ## 8. 数据与迁移
@@ -131,6 +134,7 @@ CREATE INDEX idx_tasks_completion_occ ON m_tasks_completion(occurrence_id);
 - 同一模板同一时间不重复生成实例。
 - 分派给成员；权限不足不能改他人任务。
 - 物品/位置详情能显示关联任务。
+- 旅行准备任务可关联到 `travel.trip`；完成任务不回写旅行，旅行也不复制任务状态。
 - 原生与 Web 都能完成/跳过。
 
 ## 10. 开放问题
@@ -140,3 +144,4 @@ CREATE INDEX idx_tasks_completion_occ ON m_tasks_completion(occurrence_id);
 - 是否支持多人认领、子任务、依赖。
 - 完成照片是否强制；文件保留多久。
 - 完成是否可撤销；若可，如何保持历史不可变（追加补偿记录）。
+- 是否从旅行打包清单一键生成任务；v1 清单与任务分开，避免任务膨胀。

@@ -1,6 +1,6 @@
 # 模块：日历（calendar）
 
-> 状态：draft ｜ 类型：business ｜ 依赖：`members`、`locations`（可选）、`documents`（可选）、`tasks`（可选） ｜ 拥有：`m_calendar_event`、`m_calendar_event_member`
+> 状态：draft ｜ 类型：business ｜ 依赖：`members`、`locations`（可选）、`documents`（可选）、`tasks`（可选）、`travel`（可选） ｜ 拥有：`m_calendar_event`、`m_calendar_event_member`
 
 ## 1. 目的与非目标
 
@@ -17,7 +17,8 @@
 
 - 记录结婚纪念日，每年显示「第 N 周年」。
 - 记录孩子和家人的生日。
-- 记录家庭旅行、学校活动、家长会、公司出差。
+- 记录学校活动、家长会、公司出差。
+- 查看家庭旅行/出差的占用（由 `travel` 只读叠加，不在日历复制行程）。
 - 查看某个月/某周；按成员、类型筛选。
 - 在某天同时看到事件和待办任务。
 - 给活动附邀请函、门票、行程单。
@@ -28,6 +29,8 @@
 - 引用 `member_id`、`location_id`；不建跨模块外键。
 - 附件归 `documents`；`calendar` 只调用 `documents` RPC。
 - 日历可以只读叠加 `tasks` 的到期项；任务状态仍由 `tasks` 拥有，日历不复制、不完成、不改期。
+- 日历可以只读叠加 `travel` 的旅行日期；行程与游记仍由 `travel` 拥有，日历不复制、不改期、不生成事件。
+- 旅行叠加只在原生显示；Web 日历不显示旅行条目，避免行程与住址经行星明文暴露。
 - 生日/纪念日 v1 由 `calendar` 建事件，避免和 `members` 资料双份维护。
 - 不内置提醒；事件变化只发事件，通知/任务自行消费。
 
@@ -78,15 +81,17 @@ v1 默认家庭内可见；私密事件、按成员可见性后续再加。
 
 - 单次查询范围 ≤ 1 年，展开结果 ≤ 500 条；超出返回范围错误。
 - 任务叠加不由 `calendar` 查表；客户端并行调 `tasks.occurrences.list`。
+- 旅行叠加不由 `calendar` 查表；原生客户端并行调 `travel.trips.listInRange`，只显示标题与日期，不显示游记。
 
 ## 7. UI（原生 / Web）
 
 - 原生：月/周/日视图、事件详情、新建/编辑、参与者选择、地点选择、附件上传。
 - Web：固定壳中的月视图 + 列表；v1 不做拖拽改期。
 - 纪念日/生日显示「第 N 周年」；v1 生日需要完整日期，是否支持只记月日见开放问题。
-- 同一天展示两类条目：
+- 同一天展示三类条目：
   - 事件：`calendar.events.list`。
   - 任务：只读叠加 `tasks.occurrences.list`，点击跳转到任务详情。
+  - 旅行：只读叠加 `travel.trips.listInRange`，点击跳转到旅行详情；不显示游记正文。
 - 事件详情显示参与者、地点、附件；附件通过 `documents.listFor(targetType="calendar.event")`。
 - 按类型着色；颜色只在前端映射，不落库。
 
@@ -136,6 +141,7 @@ CREATE INDEX idx_calendar_event_member ON m_calendar_event_member(member_id);
 - 生日、纪念日默认按年重复；重复日期不存在时跳过。
 - 按成员、类型、地点、时间范围筛选正确。
 - 日历同一天能只读显示任务，点击可跳转；任务状态不被日历修改。
+- 日历能只读显示旅行占用，点击跳转旅行；不生成重复事件，也不在 Web 显示旅行条目。
 - 参与者、地点、附件关联正确；删除关联不删文件。
 - 归档事件默认不返回；恢复后重新出现。
 - 查询范围和展开数量超限被拒绝。
@@ -150,3 +156,4 @@ CREATE INDEX idx_calendar_event_member ON m_calendar_event_member(member_id);
 - 生日是否记录出生年份、是否显示年龄。
 - 任务是否要反过来在日历中直接改期，还是坚持只读叠加。
 - 家庭时区变化、跨时区出差事件的展示规则。
+- 旅行叠加是否显示目的地，还是只显示「旅行占用」；v1 原生显示标题与日期。

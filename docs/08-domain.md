@@ -17,6 +17,7 @@
 | `health` | 健康与医疗 | business | draft | 人类健康记录、疫苗、用药、过敏 |
 | `pets` | 宠物与花鸟鱼虫 | business | draft | 宠物/植物档案、成员、护理记录 |
 | `smart_home` | 智能家居 | business | draft | 设备、绑定、状态、命令、场景、联动 |
+| `messages` | 消息与公告 | business | draft | 公屏、私聊、聊天记录、主页公告 |
 | `achievements` | 奖项与证书 | business | draft | 成员奖项、荣誉、证书、资格 |
 | `identity` | 证件与卡片 | business | draft | 成员证件、通行证、社保卡、银行卡 |
 | `assets` | 资产 | deferred | — | 暂并入 `inventory.kind=durable`，后续再评估拆分 |
@@ -58,6 +59,9 @@ flowchart LR
     Documents --> Pets
     Documents --> Locations
     Documents --> Tasks
+    Messages["messages<br/>消息与公告"]
+    Messages --> Members
+    Documents --> Messages
     Achievements["achievements<br/>奖项与证书"]
     Documents --> Achievements
     Achievements --> Members
@@ -82,6 +86,7 @@ flowchart LR
 | `health` | `m_health_record` | `member_id` |
 | `pets` | `m_pets_pet`、`m_pets_member`、`m_pets_care_log` | `member_id`、`location_id` |
 | `smart_home` | `m_smart_home_adapter`、`m_smart_home_device`、`m_smart_home_binding`、`m_smart_home_state`、`m_smart_home_command`、`m_smart_home_event`、`m_smart_home_scene`、`m_smart_home_automation` | `location_id`、`member_id`、`inventory_item_id` |
+| `messages` | `m_messages_conversation`、`m_messages_conversation_member`、`m_messages_message`、`m_messages_read`、`m_messages_announcement`、`m_messages_announcement_dismissal` | `member_id` |
 | `achievements` | `m_achievements_record` | `member_id` |
 | `identity` | `m_identity_record` | `member_id` |
 | `members` | 人员与家庭关系 | 无 |
@@ -104,6 +109,9 @@ flowchart LR
 - 智能设备、绑定、状态、命令、场景与联动由 `smart_home` 拥有；物理资产/保修归 `inventory`，房间归 `locations`，说明书归 `documents`。
 - 智能家居的设备类型是 `DeviceProfile`，操作是 `Capability`，协议是 `ProtocolDriver`；核心不写厂商分支。
 - 门锁 v1 只读，不注册 `unlock`；高风险命令不依赖 UI 隐藏，由策略层拦截。
+- 公屏、私聊、聊天记录与主页公告由 `messages` 拥有；私聊仅参与者可见，管理员没有读取入口。
+- 公告归 `messages`，不复制成日历事件或任务；主页横幅只读展示生效中的公告。
+- Web 只提供公屏与公告；私聊仅原生，避免行星看到 Web 明文。
 - 奖项/证书记录由 `achievements` 拥有；证书扫描件与关联由 `documents` 拥有。
 - 证件/卡片记录由 `identity` 拥有；只存掩码/后四位，完整信息看扫描件。
 - 水印分享由 `documents` 生成；`identity` 只提供入口与上下文，不复制文件。
@@ -148,3 +156,8 @@ flowchart LR
 - 多绑定状态冲突如何合并；v1 只启用主绑定。
 - 蓝牙音频是否由宿主统一音频服务提供，还是拆独立模块。
 - 智能家居驱动是否允许携带原生库；BLE/串口驱动可能需要。
+- 私聊是否需要端到端加密；v1 仅应用层隔离，恒星数据库仍存明文。
+- Web 是否永远不提供私聊，还是后续加重新认证/端到端后再开放。
+- 聊天是否需要图片/文件、搜索、导出与保留期；v1 只做文本与基础历史。
+- 是否需要多个公屏/群组，还是只保留一个家庭公屏。
+- 公告是否需要定向、强制确认、定时推送；v1 只做时间窗与主页横幅。

@@ -270,6 +270,7 @@ modules/
   health/           健康与医疗
   pets/             宠物与花鸟鱼虫
   smart_home/       智能家居设备、协议驱动、场景与联动
+  messages/         家庭公屏、私聊、聊天记录与主页公告
   documents/        说明书 / 凭证
   achievements/     奖项与证书
   identity/         证件与卡片

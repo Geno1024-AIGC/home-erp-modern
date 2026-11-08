@@ -182,10 +182,13 @@
 8. `health`（健康与医疗：就诊、疫苗、用药、过敏；默认私密）
 9. `pets`（宠物与花鸟鱼虫：猫狗鸟鱼虫植物、护理记录）
 10. `smart_home`（智能家居：设备/能力/协议驱动、状态、命令、场景、简单联动）
+11. `messages`（消息与公告：家庭公屏、两人私聊、聊天记录、主页横幅公告）
 
 `assets` 暂缓，v1 由 `inventory.kind=durable` 覆盖。`identity` 实施前先定敏感字段与审计策略；`health` 实施前先定隐私、审计与加密策略。`smart_home` 实施前先定驱动 SPI、Profile/Capability 注册表与高风险命令策略；v1 门锁只读，不做远程开锁、摄像头与麦克风。
 
 后续增强：`inventory` 的价格历史与折线图（见 [modules/inventory/pricing.md](modules/inventory/pricing.md)）；v1 不做自动抓价、价格预测、提醒与预算。
+
+`messages` 的私聊仅原生客户端；Web 固定壳只提供公屏与公告，服务端拒绝 Web 私聊请求。
 
 每个模块：
 

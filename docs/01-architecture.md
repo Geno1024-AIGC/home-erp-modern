@@ -272,6 +272,7 @@ modules/
   smart_home/       智能家居设备、协议驱动、场景与联动
   messages/         家庭公屏、私聊、聊天记录与主页公告
   travel/           旅行计划、逐日行程、清单与游记
+  fitness/          运动类型、运动记录、目标与统计
   documents/        说明书 / 凭证
   achievements/     奖项与证书
   identity/         证件与卡片

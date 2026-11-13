@@ -31,6 +31,7 @@
 - 完成照片归 `documents`；`tasks` 只存文档 ID 或通过 `documents.link` 关联。
 - 日历只读叠加任务到期项；任务状态、改期、完成仍由 `tasks` 拥有。
 - 宠物护理计划由 `tasks` 建模板，`subject_type` 可指向 `pets.pet`。
+- 锻炼提醒/计划任务由 `tasks` 建模板/实例；`fitness` 不自动创建任务，任务也不自动生成运动记录；v1 不做目标↔任务关联，避免家庭可见任务暴露私有目标。
 - 旅行准备任务由 `tasks` 建模板/实例，`subject_type` 可指向 `travel.trip`；行程、清单与游记仍由 `travel` 拥有；未安装 `travel` 时退化为普通任务。
 - 提醒/通知由通知能力负责（后续）；`tasks` 只产生事件。
 

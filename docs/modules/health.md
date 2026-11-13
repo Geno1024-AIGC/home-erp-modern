@@ -28,6 +28,7 @@
 
 - 拥有健康记录；只引用 `member_id`，不建跨模块外键。
 - 人类健康专属；宠物健康在 `pets`，不混用。
+- 运动记录、运动目标与统计归 `fitness`；`health` 不存训练日志，运动损伤/不适仍作为健康记录。
 - 预约/随访由 `calendar` 拥有；用药/复诊提醒由 `tasks` 拥有。
 - 报告、处方、影像报告归 `documents`；`health` 只调用其 RPC。
 - 健康记录默认 `private`（本人 + `health.admin`）；可显式改为 `family`。

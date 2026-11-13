@@ -19,6 +19,7 @@
 | `smart_home` | 智能家居 | business | draft | 设备、绑定、状态、命令、场景、联动 |
 | `messages` | 消息与公告 | business | draft | 公屏、私聊、聊天记录、主页公告 |
 | `travel` | 旅行 | business | draft | 旅行计划、目的地、同行人、逐日行程、清单、游记 |
+| `fitness` | 运动与健身 | business | draft | 运动类型、运动记录、目标与只读统计 |
 | `achievements` | 奖项与证书 | business | draft | 成员奖项、荣誉、证书、资格 |
 | `identity` | 证件与卡片 | business | draft | 成员证件、通行证、社保卡、银行卡 |
 | `assets` | 资产 | deferred | — | 暂并入 `inventory.kind=durable`，后续再评估拆分 |
@@ -67,6 +68,8 @@ flowchart LR
     Travel --> Members
     Documents --> Travel
     Calendar --> Travel
+    Fitness["fitness<br/>运动与健身"]
+    Fitness --> Members
     Achievements["achievements<br/>奖项与证书"]
     Documents --> Achievements
     Achievements --> Members
@@ -93,6 +96,7 @@ flowchart LR
 | `smart_home` | `m_smart_home_adapter`、`m_smart_home_device`、`m_smart_home_binding`、`m_smart_home_state`、`m_smart_home_command`、`m_smart_home_event`、`m_smart_home_scene`、`m_smart_home_automation` | `location_id`、`member_id`、`inventory_item_id` |
 | `messages` | `m_messages_conversation`、`m_messages_conversation_member`、`m_messages_message`、`m_messages_read`、`m_messages_announcement`、`m_messages_announcement_dismissal` | `member_id` |
 | `travel` | `m_travel_trip`、`m_travel_destination`、`m_travel_traveler`、`m_travel_day`、`m_travel_item`、`m_travel_checklist_item`、`m_travel_journal` | `member_id` |
+| `fitness` | `m_fitness_activity_type`、`m_fitness_workout`、`m_fitness_goal` | `member_id` |
 | `achievements` | `m_achievements_record` | `member_id` |
 | `identity` | `m_identity_record` | `member_id` |
 | `members` | 人员与家庭关系 | 无 |
@@ -121,6 +125,9 @@ flowchart LR
 - 旅行计划、行程、清单与游记由 `travel` 拥有；日历只读叠加旅行日期，不复制行程或事件。
 - 旅行准备任务归 `tasks`，票据/照片归 `documents`，证件号码归 `identity`；`travel` 只保存逻辑引用。
 - 旅行日期、住宿地址与游记会暴露家中无人；默认仅家庭成员可见，`guest` 无权限，日志/通知不记录具体地址与正文。
+- 运动类型、运动记录、目标与统计由 `fitness` 拥有；医疗记录仍归 `health`，提醒仍归 `tasks`，不自动互相回写。
+- 运动记录默认 `private`，逐条显式改为 `family`；管理员不能读取私有记录，统计只汇总请求者可见的记录。
+- 运动统计按成员本地日期分桶，缺失补 0、不插值，最多 500 个桶；不提供排行、挑战赛与 Web 页面。
 - 奖项/证书记录由 `achievements` 拥有；证书扫描件与关联由 `documents` 拥有。
 - 证件/卡片记录由 `identity` 拥有；只存掩码/后四位，完整信息看扫描件。
 - 水印分享由 `documents` 生成；`identity` 只提供入口与上下文，不复制文件。
@@ -134,6 +141,7 @@ flowchart LR
 - [barcode-intake.md](flows/barcode-intake.md)：扫码录入物品并入库。
 - [cook-log.md](flows/cook-log.md)：记录一顿饭并附照片。
 - [trip-planning.md](flows/trip-planning.md)：计划旅行、绑定票据与任务、回来后记录。
+- [workout-log.md](flows/workout-log.md)：记录运动、查看统计，并与任务/健康记录协作。
 
 ## 5. 待确认
 
@@ -178,3 +186,12 @@ flowchart LR
 - 旅行是否接天气、航班状态、汇率等外部数据；v1 只手填。
 - 旅行票据是否做 OCR 与自动填充；v1 只上传附件。
 - 跨时区交通是否记录双时区与精确 UTC 时间；v1 用当地墙上时间。
+- 运动是否需要家庭总量、排行榜或挑战赛；v1 不做，避免隐私与公平性问题。
+- 运动是否接穿戴设备/HealthKit/Google Fit/Strava；v1 只手动录入。
+- 运动是否需要 GPS 轨迹、配速分段与地图；v1 不做。
+- 运动是否需要力量组数/次数/重量与训练计划；v1 只做会话级记录。
+- 是否允许原生日历只读叠加运动；v1 不做，避免暴露运动时间。
+- 运动是否需要导出/打印与照片；v1 不做，后续按高敏感操作处理。
+- 目标是否需要家庭可见或多人共同目标；v1 仅本人私有。
+- 家长是否可代录孩子运动；v1 只能本人录入。
+- 个人最佳是否只按主指标；v1 只按 `primary_metric`。

@@ -62,6 +62,13 @@
 - 经行星 HTTPS 网关访问恒星；登录使用恒星签发的 HttpOnly 会话 Cookie。
 - 不实现端到端加密；信任行星（见安全边界）。
 
+### 星群 Cluster（可选，非协议角色）
+
+- 仅当部署 `smart_home` 的房间节点时存在；不参与 ERP 握手、RPC 与会话。
+- 由恒星直接管辖的固定 I/O 节点：采集、执行、本地兜底、事件缓存。
+- 只连本地 MQTT，不跑业务逻辑、不存业务数据、不接公网。
+- 详见 [modules/smart_home/room-node.md](modules/smart_home/room-node.md)。
+
 ---
 
 ## 3. 部署拓扑

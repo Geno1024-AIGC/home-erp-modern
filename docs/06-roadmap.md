@@ -186,7 +186,7 @@
 12. `travel`（旅行：目的地、同行人、逐日行程、预订、清单、游记与照片）
 13. `fitness`（运动与健身：运动类型、会话记录、目标、活跃天数/连续天数/个人最佳统计）
 
-`assets` 暂缓，v1 由 `inventory.kind=durable` 覆盖。`identity` 实施前先定敏感字段与审计策略；`health` 实施前先定隐私、审计与加密策略。`smart_home` 实施前先定驱动 SPI、Profile/Capability 注册表与高风险命令策略；v1 门锁只读，不做远程开锁、摄像头与麦克风。DIY/改装设备 v1 优先外部非侵入式监测与本地驱动，主电源改装由持证电工完成，ERP 不承担硬件安全。
+`assets` 暂缓，v1 由 `inventory.kind=durable` 覆盖。`identity` 实施前先定敏感字段与审计策略；`health` 实施前先定隐私、审计与加密策略。`smart_home` 实施前先定驱动 SPI、Profile/Capability 注册表与高风险命令策略；v1 门锁只读，不做远程开锁、摄像头与麦克风。DIY/改装设备 v1 优先外部非侵入式监测与本地驱动，主电源改装由持证电工完成，ERP 不承担硬件安全。分布式采集/控制走星群与星节点：恒星是唯一大脑，节点只做 I/O、本地兜底与事件缓存（见 [modules/smart_home/room-node.md](modules/smart_home/room-node.md)）。
 
 后续增强：`inventory` 的价格历史与折线图（见 [modules/inventory/pricing.md](modules/inventory/pricing.md)）；v1 不做自动抓价、价格预测、提醒与预算。
 

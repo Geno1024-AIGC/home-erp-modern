@@ -20,6 +20,7 @@
 | `messages` | 消息与公告 | business | draft | 公屏、私聊、聊天记录、主页公告 |
 | `travel` | 旅行 | business | draft | 旅行计划、目的地、同行人、逐日行程、清单、游记 |
 | `fitness` | 运动与健身 | business | draft | 运动类型、运动记录、目标与只读统计 |
+| `wardrobe` | 衣物与穿搭 | business | draft | 衣物、洗护画像、搭配、穿着记录、洗涤批次、天气快照 |
 | `achievements` | 奖项与证书 | business | draft | 成员奖项、荣誉、证书、资格 |
 | `identity` | 证件与卡片 | business | draft | 成员证件、通行证、社保卡、银行卡 |
 | `assets` | 资产 | deferred | — | 暂并入 `inventory.kind=durable`，后续再评估拆分 |
@@ -70,6 +71,12 @@ flowchart LR
     Calendar --> Travel
     Fitness["fitness<br/>运动与健身"]
     Fitness --> Members
+    Wardrobe["wardrobe<br/>衣物与穿搭"]
+    Wardrobe --> Members
+    Wardrobe --> Locations
+    Documents --> Wardrobe
+    Wardrobe --> SmartHome
+    Tasks --> Wardrobe
     Achievements["achievements<br/>奖项与证书"]
     Documents --> Achievements
     Achievements --> Members
@@ -97,6 +104,7 @@ flowchart LR
 | `messages` | `m_messages_conversation`、`m_messages_conversation_member`、`m_messages_message`、`m_messages_read`、`m_messages_announcement`、`m_messages_announcement_dismissal` | `member_id` |
 | `travel` | `m_travel_trip`、`m_travel_destination`、`m_travel_traveler`、`m_travel_day`、`m_travel_item`、`m_travel_checklist_item`、`m_travel_journal` | `member_id` |
 | `fitness` | `m_fitness_activity_type`、`m_fitness_workout`、`m_fitness_goal` | `member_id` |
+| `wardrobe` | `m_wardrobe_care_profile`、`m_wardrobe_garment`、`m_wardrobe_outfit`、`m_wardrobe_outfit_item`、`m_wardrobe_wear_log`、`m_wardrobe_laundry_load`、`m_wardrobe_laundry_item`、`m_wardrobe_draw`、`m_wardrobe_weather` | `member_id`、`location_id`、`device_id`、`photo_doc_id` |
 | `achievements` | `m_achievements_record` | `member_id` |
 | `identity` | `m_identity_record` | `member_id` |
 | `members` | 人员与家庭关系 | 无 |
@@ -131,6 +139,10 @@ flowchart LR
 - 奖项/证书记录由 `achievements` 拥有；证书扫描件与关联由 `documents` 拥有。
 - 证件/卡片记录由 `identity` 拥有；只存掩码/后四位，完整信息看扫描件。
 - 水印分享由 `documents` 生成；`identity` 只提供入口与上下文，不复制文件。
+- 衣物、洗护画像、搭配、穿着记录、洗涤批次与天气快照由 `wardrobe` 拥有；洗衣机设备归 `smart_home`，照片归 `documents`，提醒归 `tasks`。
+- 单件可穿戴物品归 `wardrobe`，成打/未拆封消耗品归 `inventory`；衣物尺码不是身体尺寸。
+- 抽卡只从用户已存搭配里抽，按天气、体感温区、季节与场合过滤，每天最多 3 次；洗护冲突检查只警告，不改洗衣机程序。
+- 天气只用城市级粗位置，快照仅保留 14 天；衣物与搭配家庭成员可见，穿着记录默认仅本人可见。
 - 跨模块展示数据可以短 TTL 缓存；写操作必须回到拥有者。
 
 ## 4. 跨模块流程
@@ -142,6 +154,7 @@ flowchart LR
 - [cook-log.md](flows/cook-log.md)：记录一顿饭并附照片。
 - [trip-planning.md](flows/trip-planning.md)：计划旅行、绑定票据与任务、回来后记录。
 - [workout-log.md](flows/workout-log.md)：记录运动、查看统计，并与任务/健康记录协作。
+- [laundry-day.md](flows/laundry-day.md)：洗一桶衣服、处理洗护冲突，并让次日抽卡自动避开。
 
 ## 5. 待确认
 
@@ -177,6 +190,7 @@ flowchart LR
 - DIY/改装设备是否开放用户自定义 Profile/Capability；v1 只复用内置 Profile 与本地驱动。
 - DIY 主电源/加热/洗衣机启动是否允许远程控制；v1 默认只本地、原生、重新认证，ERP 不承担硬件安全。
 - 星群采用几个节点、是否统一 PoE、Zigbee/Thread 电池传感器是否计为成员；v1 固定节点网线优先，电池传感器算网关子设备。
+- 衣物是否把天气 Provider 独立成 `weather` 模块，是否允许从单件随机组合搭配；v1 只抽已存搭配，天气可降级为手动。
 - 私聊是否需要端到端加密；v1 仅应用层隔离，恒星数据库仍存明文。
 - Web 是否永远不提供私聊，还是后续加重新认证/端到端后再开放。
 - 聊天是否需要图片/文件、搜索、导出与保留期；v1 只做文本与基础历史。

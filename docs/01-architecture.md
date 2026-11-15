@@ -280,6 +280,7 @@ modules/
   messages/         家庭公屏、私聊、聊天记录与主页公告
   travel/           旅行计划、逐日行程、清单与游记
   fitness/          运动类型、运动记录、目标与统计
+  wardrobe/         衣物、洗护、搭配与抽卡
   documents/        说明书 / 凭证
   achievements/     奖项与证书
   identity/         证件与卡片

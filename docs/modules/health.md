@@ -54,8 +54,9 @@
 - `metadata_json` 放类型相关字段，例如：
   - 用药：`{"dosage":"5mg","frequency":"每日一次","startDate":"2026-11-01"}`。
   - 疫苗：`{"dose":2,"vaccine":"..."}`。
-  - 过敏：`{"severity":"moderate","reaction":"..."}`。
+  - 过敏：`{"allergenTag":"peanut","severity":"moderate","reaction":"..."}`。
 - `metadata_json` 仍按高敏感数据处理；禁止放文件内容或完整证件号。
+- 过敏记录的 `metadata_json.allergenTag` 用小写规范词（如 `peanut`、`shellfish`）；`meals` 只做精确匹配，不推断同义词，也不把「未记录」当成「无过敏」。
 - 允许同一成员多条同类记录；不做病种/药品唯一约束。
 - 归档不物理删除；默认不返回，本人/管理员可查历史。
 - 报告/处方通过 `documents.link` 关联到 `targetType="health.record"`。

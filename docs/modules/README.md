@@ -46,7 +46,7 @@
 | `inventory` | 物品 | business | draft | `locations`、`documents`（可选） | [inventory.md](inventory.md) |
 | `tasks` | 家务与任务 | business | draft | `locations`、`inventory`、`members`、`documents`（可选） | [tasks.md](tasks.md) |
 | `calendar` | 日历 | business | draft | `members`、`locations`（可选）、`documents`（可选）、`tasks`（可选）、`travel`（可选） | [calendar.md](calendar.md) |
-| `meals` | 饮食与采购 | business | draft | `inventory`（可选）、`tasks`（可选）、`calendar`（可选）、`documents`（可选） | [meals.md](meals.md) |
+| `meals` | 饮食与采购 | business | draft | `inventory`（可选）、`health`（可选）、`tasks`（可选）、`calendar`（可选）、`documents`（可选） | [meals.md](meals.md) |
 | `health` | 健康与医疗 | business | draft | `members`、`documents`（可选）、`calendar`（可选）、`tasks`（可选） | [health.md](health.md) |
 | `pets` | 宠物与花鸟鱼虫 | business | draft | `members`、`locations`（可选）、`documents`（可选）、`tasks`（可选） | [pets.md](pets.md) |
 | `smart_home` | 智能家居 | business | draft | `locations`（可选）、`members`（可选）、`inventory`（可选）、`documents`（可选）、`tasks`（可选） | [smart_home.md](smart_home.md) |

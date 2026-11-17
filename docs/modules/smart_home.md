@@ -72,6 +72,8 @@ v1 参考 Profile：`climate.ir_ac`、`lock.readonly`、`media_player.speaker`�
 - 一个设备可有一条主绑定和零条备用绑定；网关型驱动可以作为多个设备的适配器实例。
 - `state.source`：`reported`（设备上报）、`inferred`（红外等推断）、`optimistic`（命令后临时状态）。
 - 命令结果不等于真实状态；以 `DeviceState` 为准。
+- 跨模块流程只能在用户显式确认后执行低风险场景；场景不得包含门锁、加热、燃气、总阀等高风险能力。
+- 场景失败只报错，不重试风暴；不把 `optimistic` 状态当成设备真实状态。
 - 红外没有回传，状态必须标记 `inferred`；UI 显示“最后发送”。
 - 未知设备只在发现列表出现；用户确认后才创建设备与绑定。
 - Profile / Capability / Driver SPI 详见 [smart_home/spi.md](smart_home/spi.md)。

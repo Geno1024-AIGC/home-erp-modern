@@ -45,6 +45,7 @@ flowchart LR
     Meals["meals<br/>饮食与采购"] --> Inventory
     Health["health<br/>健康与医疗"]
     Health --> Members
+    Meals --> Health
     Pets["pets<br/>宠物与花鸟鱼虫"]
     Pets --> Members
     Pets --> Locations
@@ -97,7 +98,7 @@ flowchart LR
 | `documents` | `m_documents_doc`、`m_documents_link`、`files/` | `target_type` + `target_id` |
 | `tasks` | `m_tasks_template`、`m_tasks_occurrence`、`m_tasks_completion` | `assignee_id`、`subject_type` + `subject_id` |
 | `calendar` | `m_calendar_event`、`m_calendar_event_member` | `member_id`、`location_id` |
-| `meals` | `m_meals_recipe`、`m_meals_recipe_ingredient`、`m_meals_plan`、`m_meals_grocery_item`、`m_meals_cook_log`、`m_meals_cook_log_dish` | `inventory_item_id`、`recipe_id`、`meal_plan_id` |
+| `meals` | `m_meals_recipe`、`m_meals_recipe_ingredient`、`m_meals_plan`、`m_meals_grocery_item`、`m_meals_cook_log`、`m_meals_cook_log_dish`、`m_meals_leftover` | `inventory_item_id`、`recipe_id`、`meal_plan_id` |
 | `health` | `m_health_record` | `member_id` |
 | `pets` | `m_pets_pet`、`m_pets_member`、`m_pets_care_log` | `member_id`、`location_id` |
 | `smart_home` | `m_smart_home_adapter`、`m_smart_home_device`、`m_smart_home_binding`、`m_smart_home_state`、`m_smart_home_command`、`m_smart_home_event`、`m_smart_home_scene`、`m_smart_home_automation` | `location_id`、`member_id`、`inventory_item_id` |
@@ -121,6 +122,11 @@ flowchart LR
 - 任务完成记录由 `tasks` 拥有；不要在其他模块复制「已完成」状态。
 - 事件、纪念日、生日由 `calendar` 拥有；日历只读叠加 `tasks` 到期项，不复制任务。
 - 菜谱、菜单、采购清单和做饭记录由 `meals` 拥有；库存数量仍由 `inventory` 拥有，采购任务仍由 `tasks` 拥有。
+- 开封后的期限归 `inventory`（`StockLot.opened_at` + `use_within_days`）；熟食剩菜归 `meals`（`Leftover`）。两者都只提醒，不自动扣减、不自动丢弃。
+- 库存可用量由 `inventory.items.availability` 提供给 `meals`；过敏过滤只按调用者可见的显式标签精确匹配，不推断、不保证。
+- 补货只按 `consume` / `spoil` 流水估算，建议只进采购清单；不自动下单、不自动入库。
+- 一次性任务与锚点清单组归 `tasks`；流程不自建待办表，清单组不复制其他模块数据。
+- 出门与远行清单只做只读聚合与用户确认；`smart_home` 只执行低风险场景，不自动锁门、断电、关阀。
 - 做饭记录记录实际发生的烹饪，照片归 `documents`；不自动扣库存、不自动完成任务。
 - 人类健康记录由 `health` 拥有；默认私密，预约归 `calendar`，提醒归 `tasks`，报告归 `documents`。
 - 宠物/植物档案与护理记录由 `pets` 拥有；护理提醒归 `tasks`，食物/药品库存归 `inventory`，宠物医疗不混入 `health`。
@@ -155,6 +161,11 @@ flowchart LR
 - [trip-planning.md](flows/trip-planning.md)：计划旅行、绑定票据与任务、回来后记录。
 - [workout-log.md](flows/workout-log.md)：记录运动、查看统计，并与任务/健康记录协作。
 - [laundry-day.md](flows/laundry-day.md)：洗一桶衣服、处理洗护冲突，并让次日抽卡自动避开。
+- [leave-home.md](flows/leave-home.md)：出门前 30 秒聚合日程、任务、待退物品与天气，按需执行低风险离家场景。
+- [leftovers.md](flows/leftovers.md)：记录开封与剩菜，合并临期视图，吃掉或扔掉后留痕。
+- [cook-from-stock.md](flows/cook-from-stock.md)：按现有库存、临期食材与过敏标签给出确定性候选，缺料进采购清单。
+- [restock.md](flows/restock.md)：按消耗速度估算补货点，建议进采购清单，买回来显式入库。
+- [trip-prep.md](flows/trip-prep.md)：出远门前生成打包清单与离家清单组，检查冰箱、宠物、证件与设备状态。
 
 ## 5. 待确认
 
@@ -177,7 +188,7 @@ flowchart LR
 - 日历中的任务叠加是否允许直接改期，还是只读。
 - 菜单计划是否显示在日历主视图；v1 先留在 `meals`。
 - 采购清单是否与库存的购物清单合并；v1 由 `meals` 独占。
-- 做饭记录是否要按顿/按菜拆分，以及是否记录剩菜与浪费；v1 按顿 + 多菜品。
+- 做饭记录是否要按顿/按菜拆分；v1 按顿 + 多菜品；剩菜独立记录状态与期限。
 - 健康记录是否需要字段级加密、更细的成员 ACL、管理员破窗。
 - 健康预约/提醒是否允许从健康模块直接创建，还是只跳转。
 - 宠物是否需要物种专属字段与独立医疗模块。
@@ -190,7 +201,7 @@ flowchart LR
 - DIY/改装设备是否开放用户自定义 Profile/Capability；v1 只复用内置 Profile 与本地驱动。
 - DIY 主电源/加热/洗衣机启动是否允许远程控制；v1 默认只本地、原生、重新认证，ERP 不承担硬件安全。
 - 星群采用几个节点、是否统一 PoE、Zigbee/Thread 电池传感器是否计为成员；v1 固定节点网线优先，电池传感器算网关子设备。
-- 衣物是否把天气 Provider 独立成 `weather` 模块，是否允许从单件随机组合搭配；v1 只抽已存搭配，天气可降级为手动。
+- 衣物是否把天气 Provider 独立成 `weather` 模块；v1 复用 `wardrobe.weather`，失败时降级为手动或未知。单件组合已由 D41 支持。
 - 私聊是否需要端到端加密；v1 仅应用层隔离，恒星数据库仍存明文。
 - Web 是否永远不提供私聊，还是后续加重新认证/端到端后再开放。
 - 聊天是否需要图片/文件、搜索、导出与保留期；v1 只做文本与基础历史。
@@ -212,3 +223,35 @@ flowchart LR
 - 目标是否需要家庭可见或多人共同目标；v1 仅本人私有。
 - 家长是否可代录孩子运动；v1 只能本人录入。
 - 个人最佳是否只按主指标；v1 只按 `primary_metric`。
+- `Item.status` 是否需要流转历史（待退 → 已退、送修 → 取回）；v1 只存当前状态。
+- 开封后期限是否需要按小时、冷藏/冷冻分档；v1 用自然日，剩菜统一默认 3 天。
+- 补货阈值是否需要分类默认值；v1 只做物品级。
+- 一次性任务的 `dedupe_key` 作用域与清理策略；v1 家庭内唯一，随实例归档。
+- 出门清单是否持久化勾选、是否用门磁自动弹出；v1 不持久化，只由用户点按。
+
+## 6. 场景 backlog
+
+以下场景已经讨论过，但**未排期、未进入当前契约**。保留在这里，避免以后重复发明；展开时需要先确认新模块或字段。
+
+| 场景 | 初步落点 | 主要缺口 |
+|---|---|---|
+| 玄关分流：快递、外卖、湿伞、待退货 | `locations` + `inventory` | 需要一个「暂存区」位置与物品流转状态；`Item.status` 只覆盖一部分 |
+| 客人来访：拖鞋、Wi-Fi、停车、忌口、临时权限 | `auth` + `messages` + `calendar` | 没有访客清单与限时 `guest` 角色 |
+| 交接三天：出差/生病，把宠物、植物、快递、账单交给伴侣 | `tasks` + `pets` + `messages` | 没有临时委托与到期收回；`tasks.delegated_until` 未定 |
+| 家庭周报：这周做了什么、下周该处理什么 | 只读聚合 | 没有跨模块 digest，且必须过滤私密记录 |
+| 换季/回南天：收纳、除湿、烘干、洗窗帘 | `wardrobe` + `smart_home` + `tasks` | 没有季节性清单与湿度触发 |
+| 保修、退货、维修 | `inventory` + `documents` + `tasks` | `return_by` 已有；缺维修记录 `MaintenanceLog` |
+| 家电耗材与安全设备：滤芯、刷子、灭火器、燃气报警器 | `inventory` + `tasks` | 缺保养计划与安全设备有效期 |
+| 家庭药箱：库存、处方、有效期、急救卡 | `inventory` + `health` | 药品库存与健康记录未关联，缺急救卡 |
+| 年度盘点：证件、保险、保修、体检、备份 | 只读聚合 | 没有统一的「90 天内到期」视图 |
+| 搬家：打包、过户、改地址、旧物处理 | 跨 6 个以上模块 | 更像项目而不是单流程，需要拆阶段 |
+| 设备丢失/挂失：手机、钥匙、门卡 | `auth` + `identity` + `smart_home` | 没有吊销设备、换钥匙、停权限的流程；不做定位 |
+| 车辆/电动车：保险、年检、保养、充电 | `inventory` + `tasks` | 耐用品只有保修，没有保养计划 |
+
+### 三个未决缺口
+
+| 缺口 | 现状 | 建议 |
+|---|---|---|
+| 钱：房租、水电、保险、订阅、维修 | 没有模块，只有物品价格 | 要么做很薄的 `bills`（只记周期账单与续费），要么在本文明确写成非目标 |
+| 外部联系人：医生、兽医、维修工、亲戚、紧急联系人 | `members` 只管家庭成员 | 评估 `contacts` 模块；不要塞进 `identity` |
+| 保养历史：滤芯、电池、年检、灭火器 | `inventory` 只有保修与退货 | 给 `inventory` 加 `MaintenancePlan` / `MaintenanceLog`，不新建模块 |

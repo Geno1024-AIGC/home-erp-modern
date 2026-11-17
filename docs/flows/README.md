@@ -33,3 +33,10 @@
 | [今晚吃什么](cook-from-stock.md) | `meals`、`inventory`、`health`、`tasks` | draft |
 | [消耗速度与补货](restock.md) | `inventory`、`meals`、`tasks`、`locations`、`documents` | draft |
 | [出远门之前](trip-prep.md) | `travel`、`tasks`、`inventory`、`meals`、`pets`、`identity`、`documents`、`smart_home` | draft |
+| [到期雷达](expiry-radar.md) | `identity`、`achievements`、`inventory`、`meals`、`bills`、`tasks` | draft |
+| [一周菜单变采购清单](weekly-menu-shopping.md) | `meals`、`inventory`、`tasks`、`documents` | draft |
+| [家庭手册与应急卡](house-manual.md) | `contacts`、`locations`、`documents`、`inventory`、`tasks`、`pets`、`health`、`bills` | draft |
+| [借出与归还](loan-return.md) | `inventory`、`contacts`、`tasks`、`documents` | draft |
+| [家庭清洁](cleaning-cycle.md) | `tasks`、`locations`、`inventory`、`meals`、`smart_home`、`documents` | draft |
+| [家庭药箱](medicine-cabinet.md) | `inventory`、`health`、`documents`、`tasks`、`contacts`、`meals` | draft |
+| [周期账单](bill-cycle.md) | `bills`、`tasks`、`documents`、`contacts`、`members` | draft |

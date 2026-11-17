@@ -56,6 +56,8 @@
 | `wardrobe` | 衣物与穿搭 | business | draft | `members`、`locations`（可选）、`documents`（可选）、`tasks`（可选）、`smart_home`（可选） | [wardrobe.md](wardrobe.md) |
 | `achievements` | 奖项与证书 | business | draft | `members`、`documents`（可选）、`tasks`（可选） | [achievements.md](achievements.md) |
 | `identity` | 证件与卡片 | business | draft | `members`、`documents`（可选）、`tasks`（可选） | [identity.md](identity.md) |
+| `contacts` | 外部联系人 | business | draft | `members`（可选）、`documents`（可选） | [contacts.md](contacts.md) |
+| `bills` | 周期账单 | business | draft | `members`（可选）、`contacts`（可选）、`documents`（可选）、`tasks`（可选） | [bills.md](bills.md) |
 | `assets` | 资产 | deferred | — | — | 先并入 `inventory` |
 
-当前已写：`locations`、`inventory`、`documents`、`tasks`、`calendar`、`meals`、`health`、`pets`、`smart_home`、`messages`、`travel`、`fitness`、`wardrobe`、`achievements`、`identity`。其余模块等进入路线图时再写。
+当前已写：`locations`、`inventory`、`documents`、`tasks`、`calendar`、`meals`、`health`、`pets`、`smart_home`、`messages`、`travel`、`fitness`、`wardrobe`、`achievements`、`identity`、`contacts`、`bills`。其余模块等进入路线图时再写。

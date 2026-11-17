@@ -47,11 +47,11 @@
 | `Document` | `id`、`title`、`kind`、`file_key`、`mime`、`size`、`sha256`、`language`、`revision`、`notes`、`created_by`、`archived_at` |
 | `DocumentLink` | `document_id`、`target_type`、`target_id`、`role`、`created_at` |
 
-`kind`：`manual`、`receipt`、`warranty`、`photo`、`ticket`、`booking`、`itinerary`、`insurance`、`other`。
+`kind`：`manual`、`receipt`、`warranty`、`photo`、`ticket`、`booking`、`itinerary`、`insurance`、`contract`、`bill`、`house_manual`、`other`。
 
-`target_type`：`inventory.item`、`locations.node`、`tasks.task`、`calendar.event`、`meals.recipe`、`meals.cook_log`、`health.record`、`pets.pet`、`pets.care_log`、`achievements.record`、`identity.record`、`travel.trip`、`travel.journal_entry`。
+`target_type`：`inventory.item`、`inventory.loan`、`locations.node`、`tasks.task`、`calendar.event`、`meals.recipe`、`meals.cook_log`、`health.record`、`pets.pet`、`pets.care_log`、`achievements.record`、`identity.record`、`travel.trip`、`travel.journal_entry`、`contacts.contact`、`bills.plan`、`bills.occurrence`。
 
-`role`：`manual`、`photo`、`receipt`、`warranty`、`certificate`、`evidence`、`id_scan`、`card_scan`、`medical_report`、`prescription`、`lab_result`、`vaccination_record`、`imaging`、`pet_photo`、`vet_report`、`cook_result`、`ticket`、`booking`、`insurance`、`trip_photo`、`journal_photo`、`cover`、`attachment`。
+`role`：`manual`、`photo`、`receipt`、`warranty`、`certificate`、`evidence`、`id_scan`、`card_scan`、`medical_report`、`prescription`、`lab_result`、`vaccination_record`、`imaging`、`pet_photo`、`vet_report`、`cook_result`、`ticket`、`booking`、`insurance`、`contract`、`loan_condition`、`bill_receipt`、`house_manual`、`trip_photo`、`journal_photo`、`cover`、`attachment`。
 
 规则：
 
@@ -61,6 +61,8 @@
 - `documents.link` 到 `meals.cook_log` 等目标只是业务关联，不新增文件引用；引用始终属于 `documents.document`。
 - 旅行封面用 `role="cover"`；同一 `travel.trip` 最多一个 `cover`，切换封面时先解除旧关联。
 - 旅行票据/照片用 `role="ticket"`、`booking`、`insurance`、`trip_photo`、`journal_photo`；归档旅行不删文档，解除关联也不删文件。
+- 借出品相/归还照片用 `role="loan_condition"` 关联 `inventory.loan`；账单小票/保单用 `role="bill_receipt"` 关联 `bills.occurrence`。
+- 家庭手册/应急卡可导出为 `kind=house_manual` 的只读副本；原始事实仍由各模块拥有，不把密码/门禁码写进文档。
 - 归档文档保留关联；默认搜索不返回归档文档。
 - 文档版本用 `revision` 文本，不做自动版本链；需要历史时上传新文档并归档旧文档。
 
@@ -160,6 +162,8 @@ CREATE INDEX idx_documents_link_target ON m_documents_link(target_type, target_i
 - 上传做饭成品照片并关联到做饭记录。
 - 上传检查报告/处方并关联到健康记录。
 - 上传宠物照片/疫苗本并关联到宠物或护理记录。
+- 上传借出品相/归还照片并关联到借出记录；上传账单小票/保单并关联到某期账单。
+- 家庭手册可导出为 `house_manual` 只读副本；不包含密码、门禁码与私密健康记录。
 - 同一文档关联多个物品；同一物品多份文档。
 - 按标题/类型/语言/关联实体搜索。
 - 删除关联不删文件；GC 只清理无引用且超过安全窗口的文件。

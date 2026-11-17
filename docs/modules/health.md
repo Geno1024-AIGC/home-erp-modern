@@ -9,6 +9,7 @@
 **非目标**：
 
 - 不做诊断、治疗建议、急救服务、医疗保险理赔。
+- 不做药品库存、剂量计算、相互作用或自动补货；库存归 `inventory`。
 - 不做完整 EHR、影像归档、检验设备接入。
 - 不存宠物健康；宠物归 `pets`。
 - 不拥有预约与提醒；预约归 `calendar`，提醒归 `tasks` / 通知能力。
@@ -39,7 +40,7 @@
 
 | 实体 | 关键字段 |
 |---|---|
-| `HealthRecord` | `id`、`member_id`、`kind`、`title`、`occurred_at`、`provider`、`status`、`visibility`、`summary`、`metadata_json`、`archived_at` |
+| `HealthRecord` | `id`、`member_id`、`kind`、`title`、`occurred_at`、`provider`、`status`、`visibility`、`emergency_visible`、`summary`、`metadata_json`、`archived_at` |
 
 `kind`：`visit`、`vaccination`、`medication`、`allergy`、`condition`、`lab`、`hospitalization`、`other`。
 
@@ -47,16 +48,21 @@
 
 `visibility`：`private`、`family`。
 
+`emergency_visible`：是否允许进入家庭急救卡/应急页；默认 `0`，由本人或 `health.admin` 显式开启。
+
 规则：
 
 - `private`：仅 `member_id` 本人与 `health.admin` 可见。
 - `family`：所有拥有 `health.read` 的家庭成员可见。
 - `metadata_json` 放类型相关字段，例如：
-  - 用药：`{"dosage":"5mg","frequency":"每日一次","startDate":"2026-11-01"}`。
+  - 用药：`{"dosage":"5mg","frequency":"每日一次","startDate":"2026-11-01","inventoryItemId":"..."}`；`inventoryItemId` 只作逻辑引用，不在本模块扣库存。
   - 疫苗：`{"dose":2,"vaccine":"..."}`。
   - 过敏：`{"allergenTag":"peanut","severity":"moderate","reaction":"..."}`。
 - `metadata_json` 仍按高敏感数据处理；禁止放文件内容或完整证件号。
 - 过敏记录的 `metadata_json.allergenTag` 用小写规范词（如 `peanut`、`shellfish`）；`meals` 只做精确匹配，不推断同义词，也不把「未记录」当成「无过敏」。
+- 用药记录只描述处方/实际用药，不拥有库存；药品/保健品数量、有效期与开封归 `inventory`，通过 `metadata_json.inventoryItemId` 逻辑关联。
+- 急救卡只读取 `emergency_visible=1` 且当前用户可见的记录；未标记不等于没有病史，页面必须说明不完整。
+- 不做剂量计算、相互作用检查、过敏原推断或急救指导；这些需要专业系统与人工确认。
 - 允许同一成员多条同类记录；不做病种/药品唯一约束。
 - 归档不物理删除；默认不返回，本人/管理员可查历史。
 - 报告/处方通过 `documents.link` 关联到 `targetType="health.record"`。
@@ -76,7 +82,7 @@
 
 ## 6. RPC 与事件
 
-- `health.records.list`：按成员、类型、日期、状态、可见性筛选。
+- `health.records.list`：按成员、类型、日期、状态、可见性、急救可见性筛选。
 - `health.records.get`
 - `health.records.create`
 - `health.records.update`
@@ -106,6 +112,7 @@ CREATE TABLE m_health_record (
   provider      TEXT,
   status        TEXT,
   visibility    TEXT NOT NULL DEFAULT 'private',
+  emergency_visible INTEGER NOT NULL DEFAULT 0,
   summary       TEXT,
   metadata_json TEXT,
   archived_at   INTEGER,
@@ -126,6 +133,9 @@ CREATE INDEX idx_health_visibility ON m_health_record(visibility, archived_at);
 
 - 新增就诊、疫苗、用药、过敏、慢病、检查记录；不同 `kind` 字段正确。
 - `private` 记录仅本人与管理员可见；`family` 记录家庭成员可见。
+- `emergency_visible` 默认关闭；只有显式开启的可见记录进入急救卡；未开启不推断。
+- 药品/保健品库存与有效期在 `inventory`，健康记录只存处方/用药；两边通过 `inventoryItemId` 关联。
+- 急救卡不显示「无过敏」「安全」；无记录时提示「未标记」。`guest` 无权限。
 - 普通成员不能代写他人记录；管理员可以。
 - 上传报告并关联；删除关联不删文件；下载有审计。
 - 预约能加入日历；提醒能创建任务；健康模块不复制其状态。
@@ -134,7 +144,9 @@ CREATE INDEX idx_health_visibility ON m_health_record(visibility, archived_at);
 
 ## 10. 开放问题
 
-- 是否需要结构化用药计划（剂量/频次/提醒）而不是 `metadata_json`。
+- 是否需要结构化用药计划（剂量/频次/提醒）而不是 `metadata_json`；v1 不存剂量建议，只做记录与提醒入口。
+- 是否需要药品库存与处方的强关联、相互作用检查；v1 只做可选 `inventoryItemId`，不做医学判断。
+- 急救卡是否需要离线打印/导出与失效日期；v1 由家庭手册流程生成只读卡。
 - 是否需要结构化检验值、趋势图、影像报告。
 - 是否需要更细的 ACL（成人隐私、未成年人监护、管理员破窗）。
 - 是否需要健康数据字段级加密；v1 依赖磁盘加密。

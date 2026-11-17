@@ -53,7 +53,7 @@
 | `Recipe` | `id`、`title`、`description`、`servings`、`prep_minutes`、`cook_minutes`、`tags`、`allergen_tags`、`source`、`created_by`、`archived_at` |
 | `RecipeIngredient` | `recipe_id`、`name`、`quantity`、`unit`、`inventory_item_id`、`note`、`sort` |
 | `MealPlan` | `id`、`date`、`slot`、`title`、`recipe_id`、`servings`、`notes` |
-| `GroceryItem` | `id`、`name`、`quantity`、`unit`、`checked`、`source_recipe_id`、`inventory_item_id`、`created_at` |
+| `GroceryItem` | `id`、`name`、`quantity`、`unit`、`checked`、`source`、`source_ref`、`source_recipe_id`、`inventory_item_id`、`created_at` |
 | `CookLog` | `id`、`cooked_at`、`title`、`meal_plan_id`、`servings`、`rating`、`notes`、`created_by`、`archived_at` |
 | `CookLogDish` | `id`、`cook_log_id`、`name`、`recipe_id`、`note`、`sort` |
 | `Leftover` | `id`、`cook_log_id`、`dish_name`、`stored_at`、`location_id`、`eat_by`、`status`、`frozen_at`、`note`、`created_by`、`archived_at` |
@@ -64,10 +64,15 @@
 
 `Leftover.status`：`stored`（冷藏/常温）、`frozen`（冷冻）、`eaten`（吃掉）、`discarded`（丢弃）。
 
+`GroceryItem.source`：`manual`、`recipe`、`menu`、`restock`、`other`。`source_ref` 存生成来源的逻辑键（如 `menu:<from>:<to>`），用于重复生成时去重；不是外键。
+
 规则：
 
 - 菜谱食材用自由文本 + 可选 `inventory_item_id`；不强制所有食材都有库存物品。
-- 采购清单项可来自菜谱，也可手动添加；`checked` 只表示已买，不代表已入库。
+- 采购清单项可来自菜谱、菜单汇总、手动添加或补货建议；`checked` 只表示已买，不代表已入库。
+- 一周菜单生成采购清单时，按 `inventory_item_id` 或「名称 + 单位」精确合并；不做模糊匹配、不换算单位。
+- 重复生成只增补缺失项，不覆盖已勾选手动项；`source=menu` 且未勾选的旧项可按用户选择替换。
+- 菜单汇总可调用 `inventory.items.availability` 扣减现有库存；没有 `inventory.read` 时标 `stockUnknown`，不假装库存为 0。
 - 菜单计划按本地日期 `YYYY-MM-DD`；同一天同一餐可有多条（例如多道菜）。
 - 删除菜谱默认归档；已被菜单/采购/做饭记录引用的菜谱不物理删除。
 - 份数缩放 v1 只做展示计算，不自动改库存或采购数量。
@@ -101,6 +106,8 @@
 - `meals.plans.list`：按日期范围查询。
 - `meals.plans.set`：新增/更新某天某餐的条目。
 - `meals.plans.remove`
+- `meals.plans.groceryPreview`：`{ from, to, servingsScale? }`，汇总区间内菜单食材，返回 `required` / `available` / `missing` / `unitMismatch` / `sources`；只读。
+- `meals.plans.generateGrocery`：`{ from, to, servingsScale?, mode?: "missing" | "all", replaceGenerated?: false }`，按 `source=menu` 幂等写入采购清单，返回新建/更新/跳过数量。
 - `meals.grocery.list`
 - `meals.grocery.add` / `meals.grocery.update` / `meals.grocery.check`
 - `meals.grocery.clearChecked`
@@ -123,7 +130,7 @@
   - `meals.cook_log.changed { id, action }`
   - `meals.leftover.changed { id, action, eatBy }`
 
-`recipes.canCook` / `recipes.suggest` 以请求者身份调用 `inventory.items.availability`；没有 `inventory.read` 时返回 `stockUnknown`，不绕过权限。过敏过滤调用 `health.records.list(kind=allergy)`，只读可见记录；有成员记录不可见时返回 `allergenCheck: "partial"`，不指出是谁、不推断。
+`recipes.canCook` / `recipes.suggest` / `plans.groceryPreview` / `plans.generateGrocery` 以请求者身份调用 `inventory.items.availability`；没有 `inventory.read` 时返回 `stockUnknown`，不绕过权限。过敏过滤调用 `health.records.list(kind=allergy)`，只读可见记录；有成员记录不可见时返回 `allergenCheck: "partial"`，不指出是谁、不推断。
 
 不提供自动库存扣减 RPC；需要扣库存时由 UI 显式调用 `inventory.stock.adjust`。做饭记录与照片的上传/关联由 UI 编排：先建记录，再调 `documents.upload` / `documents.link`；跨模块流程见 [cook-log.md](../flows/cook-log.md)。不提供模型推荐、外部菜谱抓取、过敏原计算与食品安全判断。
 
@@ -133,6 +140,7 @@
 - Web：固定壳中的菜谱、菜单、采购清单、做饭记录；上传照片，不做拖拽排餐。
 - 菜谱详情显示成品照片、食材、步骤；点击库存关联跳到物品详情。
 - 菜单页显示今天/本周；可一键「创建买菜任务」（调 `tasks`）；某餐可「记录这顿」带入做饭记录。
+- 周菜单提供「生成本周采购清单」：先预览需求/现有/缺料，再选择写入；已勾选与手动项不被覆盖。
 - 首页「今晚吃什么」：显示候选、命中与临期食材、缺料、过敏警告与排序原因；不显示「安全」「无过敏」。
 - 剩菜页：按 `eat_by` 排序，显示位置、存放天数、吃掉/扔掉/冷冻；到期标红，但不自动丢弃。
 - 菜谱编辑可维护 `allergen_tags`，给出规范词建议但不自动推断。
@@ -192,6 +200,8 @@ CREATE TABLE m_meals_grocery_item (
   quantity          TEXT,
   unit              TEXT,
   checked           INTEGER NOT NULL DEFAULT 0,
+  source            TEXT NOT NULL DEFAULT 'manual',
+  source_ref        TEXT,
   source_recipe_id  TEXT,
   inventory_item_id TEXT,
   created_at        INTEGER NOT NULL,
@@ -247,6 +257,7 @@ CREATE INDEX idx_meals_leftover_cook ON m_meals_leftover(cook_log_id);
 
 - `eat_by` 用 `YYYY-MM-DD`；`stored_at` 用 UTC epoch milliseconds；提醒按家庭时区当天计算。
 - `allergen_tags` 存规范化小写、逗号分隔；空表示未标注，不表示安全。
+- `source` / `source_ref` 只用于采购清单去重与展示；`source_ref` 不是跨模块外键。
 - 剩菜不写库存表；`cook_log_id` 与 `location_id` 都是逻辑引用。
 
 - 数量用文本，允许「一把」「适量」；需要精确换算时后续再加结构化数量。
@@ -260,6 +271,9 @@ CREATE INDEX idx_meals_leftover_cook ON m_meals_leftover(cook_log_id);
 - 新建菜谱、食材、步骤、标签；上传成品照片。
 - 按周排菜单；同一天同一餐多道菜；查看今天/本周。
 - 从菜谱加入采购清单；手动添加；勾选已买；清理已买项。
+- 从一周菜单预览并生成采购清单；重复生成不重复，已勾选/手动项不被覆盖。
+- 菜单汇总按库存可用量扣减；无 `inventory.read` 时标 `stockUnknown`，不伪造缺料。
+- 单位不一致不换算，单独提示；自由文本食材按名称 + 单位精确合并。
 - 采购清单勾选不改变库存；显式调用库存调整才改数量。
 - 新建做饭记录：时间、菜品、份数、评分、备注；上传多张成品照片并关联。
 - 从当天菜单或菜谱创建记录时能预填菜品；记录与计划/菜谱不自动同步。
@@ -281,8 +295,9 @@ CREATE INDEX idx_meals_leftover_cook ON m_meals_leftover(cook_log_id);
 
 - 过敏原只用显式 `allergen_tags` 精确匹配；是否需要规范词表与同义词映射，等有真实菜谱后再定。
 - 是否需要营养/热量字段；v1 不做。
-- 是否需要份数缩放后自动换算采购数量。
-- 是否需要多份采购清单（按商店/按周）。
+- 是否需要份数缩放后自动换算采购数量；v1 按计划份数缩放，但单位不一致不换算。
+- 是否需要多份采购清单（按商店/按周）；v1 只有一份共享清单。
+- 菜单汇总是否要识别「家里常备」并默认不进清单；v1 只按显式库存与手动排除。
 - 是否需要菜谱导入/导出、网页抓取。
 - 是否需要「做饭后自动扣库存」；v1 只做显式调整。
 - 菜单计划是否要直接显示在日历主视图，还是只在 `meals` 内。

@@ -20,6 +20,7 @@
 - 父母考取证书/资格：记录证书编号、有效期，附扫描件。
 - 在成员详情查看荣誉时间线；按年份、类型、颁发方筛选。
 - 证书到期前收到提醒（可选，走 `tasks`）。
+- 到期雷达按 `expires_at` 查询证书/资格，只读展示。
 
 ## 3. 边界与依赖
 
@@ -60,7 +61,7 @@
 
 ## 6. RPC 与事件
 
-- `achievements.list`：按成员、类型、年份、颁发方、关键字筛选。
+- `achievements.list`：按成员、类型、年份、颁发方、关键字、到期范围筛选。
 - `achievements.get`
 - `achievements.create`
 - `achievements.update`

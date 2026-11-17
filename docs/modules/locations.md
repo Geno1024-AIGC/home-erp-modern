@@ -36,7 +36,7 @@
 
 | 实体 | 关键字段 |
 |---|---|
-| `LocationNode` | `id`、`parent_id`、`kind`、`name`、`sort`、`archived_at` |
+| `LocationNode` | `id`、`parent_id`、`kind`、`name`、`note`、`sort`、`archived_at` |
 
 `kind`：`site`（Level 0 地点）、`floor`、`room`、`furniture`、`container`。
 
@@ -48,6 +48,7 @@
 - 创建后不允许把根改成非 `site`，也不允许把非根改成 `site`。
 - 不成环；移动时拒绝把节点移到自己的子树下。
 - 同级按 `sort` 排序，重复时按名称。
+- `note` 只放位置相关事实（例如「总水阀在水槽下」「电闸在玄关」），不放密码、门禁码、Wi-Fi 密码或证件号；可为空。
 - 归档节点要求其子树已归档；归档后该节点不可被选择。恢复时按原父节点恢复，父节点已归档则恢复到同级根下。
 - 建议最大深度 8 层（含 Level 0）；超出由 UI 提示。
 
@@ -65,7 +66,7 @@
 - `locations.tree.get`：返回整片森林或指定根/子树。
 - `locations.node.get`
 - `locations.node.create`：`parentId=null` 仅允许创建 `kind=site` 根。
-- `locations.node.update`：名称、类型、排序。
+- `locations.node.update`：名称、类型、备注、排序。
 - `locations.node.move`：`{ id, newParentId, sort }`；根节点不能改 `parentId`。
 - `locations.node.archive` / `locations.node.restore`
 - 事件：`locations.node.changed { id, action }`，供 `inventory` / `tasks` 刷新缓存。
@@ -77,7 +78,8 @@
 - 原生：地点切换器 + 树形浏览；拖拽移动（根节点只能排序）、右键菜单（重命名/归档/新建子位置）。
 - Web：固定壳中的地点选择器 + 树形列表；不做拖拽，v1 用「移动到」选择器。
 - 物品位置选择器按 Level 0 地点分组，避免把「老家」和「工作地」的同名房间混在一起。
-- 位置详情显示物品数量、任务数量；数据通过 `inventory` / `tasks` RPC 聚合，不由 `locations` 直接查表。
+- 位置详情显示物品数量、任务数量与备注；数据通过 `inventory` / `tasks` RPC 聚合，不由 `locations` 直接查表。
+- 家庭手册只读展示关键位置的 `note`（总水阀、电闸、信箱、垃圾点），不展示密码/门禁码。
 
 ## 8. 数据与迁移
 
@@ -87,6 +89,7 @@ CREATE TABLE m_locations_node (
   parent_id   TEXT,
   kind        TEXT NOT NULL,
   name        TEXT NOT NULL,
+  note        TEXT,
   sort        INTEGER NOT NULL DEFAULT 0,
   archived_at INTEGER,
   created_at  INTEGER NOT NULL,
@@ -104,6 +107,7 @@ CREATE INDEX idx_locations_parent ON m_locations_node(parent_id, sort);
 
 - 创建多个 Level 0 地点（自己家、老家、工作地、伴侣住处）并分别建子树。
 - 创建、重命名、移动、归档、恢复非根位置。
+- 位置备注可保存总水阀/电闸等事实；不保存密码、门禁码或证件号。
 - 根节点只能重命名、排序、归档；尝试改 `parentId` 被拒绝。
 - 移动到自身子树被拒绝；成环被拒绝。
 - 归档含活跃子节点的位置被拒绝；先归档子节点。

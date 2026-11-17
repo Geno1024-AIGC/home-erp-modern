@@ -23,6 +23,8 @@
 | `wardrobe` | 衣物与穿搭 | business | draft | 衣物、洗护画像、搭配、穿着记录、洗涤批次、天气快照 |
 | `achievements` | 奖项与证书 | business | draft | 成员奖项、荣誉、证书、资格 |
 | `identity` | 证件与卡片 | business | draft | 成员证件、通行证、社保卡、银行卡 |
+| `contacts` | 外部联系人 | business | draft | 物业、维修、医生、兽医、紧急联系人 |
+| `bills` | 周期账单 | business | draft | 账单计划、每期到期、已付事实 |
 | `assets` | 资产 | deferred | — | 暂并入 `inventory.kind=durable`，后续再评估拆分 |
 
 - **core**：内置、默认启用；其他模块可以依赖，但不建议卸载。
@@ -84,6 +86,13 @@ flowchart LR
     Identity["identity<br/>证件与卡片"]
     Documents --> Identity
     Identity --> Members
+    Contacts["contacts<br/>外部联系人"]
+    Contacts --> Members
+    Bills["bills<br/>周期账单"]
+    Bills --> Members
+    Bills --> Contacts
+    Documents --> Bills
+    Tasks --> Bills
     Tasks --> Members
 ```
 
@@ -108,6 +117,8 @@ flowchart LR
 | `wardrobe` | `m_wardrobe_care_profile`、`m_wardrobe_garment`、`m_wardrobe_outfit`、`m_wardrobe_outfit_item`、`m_wardrobe_wear_log`、`m_wardrobe_laundry_load`、`m_wardrobe_laundry_item`、`m_wardrobe_draw`、`m_wardrobe_weather` | `member_id`、`location_id`、`device_id`、`photo_doc_id` |
 | `achievements` | `m_achievements_record` | `member_id` |
 | `identity` | `m_identity_record` | `member_id` |
+| `contacts` | `m_contacts_contact` | `owner_member_id` |
+| `bills` | `m_bills_plan`、`m_bills_occurrence` | `payer_member_id`、`payee_contact_id` |
 | `members` | 人员与家庭关系 | 无 |
 | `auth` | 账号、角色、会话 | `member_id` |
 
@@ -125,6 +136,14 @@ flowchart LR
 - 开封后的期限归 `inventory`（`StockLot.opened_at` + `use_within_days`）；熟食剩菜归 `meals`（`Leftover`）。两者都只提醒，不自动扣减、不自动丢弃。
 - 库存可用量由 `inventory.items.availability` 提供给 `meals`；过敏过滤只按调用者可见的显式标签精确匹配，不推断、不保证。
 - 补货只按 `consume` / `spoil` 流水估算，建议只进采购清单；不自动下单、不自动入库。
+- `contacts` 拥有外部联系人；只引用 `owner_member_id`，不存密码、门禁码、银行卡号或完整证件号；其他模块只保存 `contact_id`，联系人私密/归档时只显示快照。
+- `bills` 拥有账单计划与每期 occurrence；`markPaid` 只记事实，不移动资金、不接银行、不做预算与分账。
+- 借出记录归 `inventory`（`ItemLoan`）；`Item.status=lent` 由活跃借出派生，`lost` 需显式标记；活跃借出扣减 `availability`，不改变批次数量。
+- 药品/保健品库存与开封期限归 `inventory`；处方、用药、过敏、慢病与 `emergency_visible` 归 `health`；不做剂量计算、相互作用或急救建议。
+- 家庭手册是只读投影，不建 `house_manual` 表；关键位置备注只放总阀/电闸等物理事实，不放密码、门禁码与 Wi-Fi 密码。
+- 到期雷达只读聚合各模块到期项，不建统一到期表；写操作回到拥有者模块，不自动续费、退货或丢弃。
+- 一周菜单汇总只调用 `inventory.items.availability`；采购清单写入按 `source_ref` 幂等，已勾选/手动项不被覆盖，不自动下单或扣库存。
+- 家庭清洁不新建 `cleaning` 模块：区域来自 `locations`，周期与完成归 `tasks`，耗材归 `inventory`，设备只在显式确认后执行低风险场景。
 - 一次性任务与锚点清单组归 `tasks`；流程不自建待办表，清单组不复制其他模块数据。
 - 出门与远行清单只做只读聚合与用户确认；`smart_home` 只执行低风险场景，不自动锁门、断电、关阀。
 - 做饭记录记录实际发生的烹饪，照片归 `documents`；不自动扣库存、不自动完成任务。
@@ -166,6 +185,13 @@ flowchart LR
 - [cook-from-stock.md](flows/cook-from-stock.md)：按现有库存、临期食材与过敏标签给出确定性候选，缺料进采购清单。
 - [restock.md](flows/restock.md)：按消耗速度估算补货点，建议进采购清单，买回来显式入库。
 - [trip-prep.md](flows/trip-prep.md)：出远门前生成打包清单与离家清单组，检查冰箱、宠物、证件与设备状态。
+- [expiry-radar.md](flows/expiry-radar.md)：把证件、证书、保修、食品/药品、剩菜与账单的到期项收进只读雷达。
+- [weekly-menu-shopping.md](flows/weekly-menu-shopping.md)：按一周菜单汇总食材、扣减可用库存，幂等生成采购清单。
+- [house-manual.md](flows/house-manual.md)：只读聚合联系人、位置备注、安全物品、任务、宠物、急救与账单，生成家庭手册/应急卡。
+- [loan-return.md](flows/loan-return.md)：登记借出、扣减可用量、到期查看、归还/丢失/取消，保留借出历史。
+- [cleaning-cycle.md](flows/cleaning-cycle.md)：按区域建周期清洁任务，检查耗材，完成后记录事实，不自动启动设备。
+- [medicine-cabinet.md](flows/medicine-cabinet.md)：药品库存与有效期归 `inventory`，处方/过敏/急救可见性归 `health`。
+- [bill-cycle.md](flows/bill-cycle.md)：创建周期账单、到期查看、标记已付与留凭证，不做支付与记账。
 
 ## 5. 待确认
 
@@ -228,6 +254,13 @@ flowchart LR
 - 补货阈值是否需要分类默认值；v1 只做物品级。
 - 一次性任务的 `dedupe_key` 作用域与清理策略；v1 家庭内唯一，随实例归档。
 - 出门清单是否持久化勾选、是否用门磁自动弹出；v1 不持久化，只由用户点按。
+- 联系人是否需要多电话/邮箱、通讯录导入与去重；v1 单电话 + 备注，不导入整本通讯录。
+- 账单是否需要部分付款、自动扣款、预算与多币种汇总；v1 只记到期与已付事实。
+- 借出是否需要部分归还、多物品借出单、押金与赔偿；v1 只做单物品/单批次。
+- 急救卡是否需要离线打印、失效日期与临时访客只读；v1 只导出只读副本，不做访客账号。
+- 到期雷达是否纳入复诊、用药结束日与宠物疫苗；v1 只做显式日期，不做医疗判断。
+- 一周菜单是否需要单位换算与「家里常备」默认排除；v1 只做精确匹配与显式库存。
+- 家庭清洁是否需要独立模块、预计时长与检查评分；v1 用 `tasks` + `locations`。
 
 ## 6. 场景 backlog
 
@@ -240,18 +273,16 @@ flowchart LR
 | 交接三天：出差/生病，把宠物、植物、快递、账单交给伴侣 | `tasks` + `pets` + `messages` | 没有临时委托与到期收回；`tasks.delegated_until` 未定 |
 | 家庭周报：这周做了什么、下周该处理什么 | 只读聚合 | 没有跨模块 digest，且必须过滤私密记录 |
 | 换季/回南天：收纳、除湿、烘干、洗窗帘 | `wardrobe` + `smart_home` + `tasks` | 没有季节性清单与湿度触发 |
-| 保修、退货、维修 | `inventory` + `documents` + `tasks` | `return_by` 已有；缺维修记录 `MaintenanceLog` |
+| 保修、退货、维修 | `inventory` + `documents` + `tasks` | `return_by` 与到期雷达已覆盖；缺维修记录 `MaintenanceLog` |
 | 家电耗材与安全设备：滤芯、刷子、灭火器、燃气报警器 | `inventory` + `tasks` | 缺保养计划与安全设备有效期 |
-| 家庭药箱：库存、处方、有效期、急救卡 | `inventory` + `health` | 药品库存与健康记录未关联，缺急救卡 |
-| 年度盘点：证件、保险、保修、体检、备份 | 只读聚合 | 没有统一的「90 天内到期」视图 |
 | 搬家：打包、过户、改地址、旧物处理 | 跨 6 个以上模块 | 更像项目而不是单流程，需要拆阶段 |
 | 设备丢失/挂失：手机、钥匙、门卡 | `auth` + `identity` + `smart_home` | 没有吊销设备、换钥匙、停权限的流程；不做定位 |
 | 车辆/电动车：保险、年检、保养、充电 | `inventory` + `tasks` | 耐用品只有保修，没有保养计划 |
 
-### 三个未决缺口
+### 剩余缺口
 
 | 缺口 | 现状 | 建议 |
 |---|---|---|
-| 钱：房租、水电、保险、订阅、维修 | 没有模块，只有物品价格 | 要么做很薄的 `bills`（只记周期账单与续费），要么在本文明确写成非目标 |
-| 外部联系人：医生、兽医、维修工、亲戚、紧急联系人 | `members` 只管家庭成员 | 评估 `contacts` 模块；不要塞进 `identity` |
-| 保养历史：滤芯、电池、年检、灭火器 | `inventory` 只有保修与退货 | 给 `inventory` 加 `MaintenancePlan` / `MaintenanceLog`，不新建模块 |
+| 保养与维修历史：滤芯、电池、年检、灭火器、送修 | `inventory` 只有保修/退货与当前状态，没有 `MaintenanceLog` | 后续给 `inventory` 加 `MaintenancePlan` / `MaintenanceLog`，不新建模块 |
+
+「钱、外部联系人、家庭药箱、年度盘点」已分别由 `bills`、`contacts`、[medicine-cabinet](flows/medicine-cabinet.md) 与 [expiry-radar](flows/expiry-radar.md) 覆盖，不再列为缺口；维修/保养历史仍是主要缺口，因为到期雷达只能提醒，不能记录每次保养做了什么。
